@@ -1,5 +1,7 @@
 # MammaMiaVisualisation
 
+Virtual reality visualisation for testing marine autonomy strategies and its application to present and future monitoring systems.
+
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.6.
 
 ## Development server
