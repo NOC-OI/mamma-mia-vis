@@ -6,6 +6,7 @@ import { AppComponent } from './app/app.component';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap';
+import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 
 bootstrapApplication(AppComponent, appConfig)

@@ -1,6 +1,7 @@
 const path = require('path');
-const cesiumSource = "./node_modules/cesium/Build/Cesium/";
-const cesiumBaseUrl = "static/cesium";
+const webpack = require("webpack");
+const cesiumSource = "./node_modules/cesium/Build/Cesium";
+const cesiumBaseUrl = "cesium/static";
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { AngularWebpackPlugin } = require('@ngtools/webpack');
@@ -9,7 +10,7 @@ module.exports = {
     mode: 'development',
     entry: {
         'app': './src/main.ts',
-        'vendor': ['bootstrap'],
+        'vendor': ['bootstrap', 'cesium'],
     },
     output: {
         filename: '[name].js',
@@ -21,6 +22,11 @@ module.exports = {
     },
     module: {
     rules: [
+        {
+            test: /\.js$/, 
+            use: 'babel-loader',
+            exclude: /node_modules/,
+        },
         {
             test: /\.ts$/, 
             use: '@ngtools/webpack', // Use Angular Webpack loader for AOT compilation
@@ -77,11 +83,15 @@ module.exports = {
                 { from: path.join(cesiumSource, "Assets"), to: `${cesiumBaseUrl}/Assets`, },
                 { from: path.join(cesiumSource, "Widgets"), to: `${cesiumBaseUrl}/Widgets`, },
             ],}),
+        new webpack.DefinePlugin({
+            // Define relative base path in cesium for loading assets
+            CESIUM_BASE_URL: JSON.stringify(cesiumBaseUrl),
+        }),
     ],
     devServer: {
         static: path.resolve(__dirname, 'public'), // Serve from public directory
         historyApiFallback: true, // This ensures index.html is served for all routes
         hot: true, // Enable Hot Module Replacement (HMR)
-        port: 8080, // You can adjust the port as needed
+        port: 8080,
     },
 };
