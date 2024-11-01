@@ -20,7 +20,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit{
   }
 
   ngOnInit(): void {
-    Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkM2FmMWY5Ny05M2ZkLTQ2MDgtYWRkNy0wMWM1MGVlZmI3NmMiLCJpZCI6MjQ3Njc5LCJpYXQiOjE3Mjg3Nzk5OTZ9.rwBWfMKsBsmEQilYYnWZJZnOOxdLh6lUmasNAQrF8oc';
+    Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
   }
 
 
