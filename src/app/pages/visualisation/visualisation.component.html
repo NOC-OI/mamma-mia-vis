@@ -1,6 +1,49 @@
 <app-header></app-header>
-<div class="container">
-    <canvas id="colorRamp"></canvas>
-    <div id="cesiumContainer">
+<div class="container-fluid main-panel">
+    <div class="row">
+        <div class="col-2 options-panel">
+            <mat-card>
+                <mat-card-content>
+                    <div class="row row-cols-1">
+                        <div class="col">
+                            <mat-label><b>Elevation</b></mat-label>
+                        </div>
+                        <div class="col" id="colorRampPanel">
+                            <div class="d-flex flex-row">
+                                <div class="p-1"><mat-label for="colorRamp">-10000m</mat-label></div>
+                                <div class="p-1"><canvas id="colorRamp"></canvas></div>
+                                <div class="p-1"> <mat-label >2000m</mat-label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row row-cols-1">
+                        <div class="col">
+                            <mat-label><b>Options</b></mat-label>
+                        </div>
+                        <div class="col">
+                            <div class="row">
+                                <div class="col">
+                                    <mat-label>Exaggeration</mat-label>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-row align-items-center">
+                                <div class="p-1">
+                                    <mat-slider id="exaggerationSlider" min="1" max="5" step="1" discrete="true">
+                                        <input matSliderThumb value="1" [(ngModel)]="exaggeration" (ngModelChange)="valueChanged()">
+                                    </mat-slider>
+                                </div>
+                                <div class="p-1">
+                                    <input matInput type="text" size="3" [(ngModel)]="exaggeration" (ngModelChange)="valueChanged()"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </mat-card-content>
+            </mat-card>
+        </div>
+        <div class="col-10">
+            <div id="cesiumContainer">
+            </div>
+        </div>
     </div>
 </div>

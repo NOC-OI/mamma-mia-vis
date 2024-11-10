@@ -41,11 +41,10 @@ module.exports = {
             use: ['style-loader', 'css-loader'],
         },
         {
-            test: /\.s[ac]ss$/i,
+            test: /\.scss$/i,
+            exclude: path.resolve(__dirname, 'src/styles.scss'),
             use: [
                 'to-string-loader',
-                // Creates `style` nodes from JS strings
-                "style-loader",
                 // Translates CSS into CommonJS
                 "css-loader",
                 // Compiles Sass to CSS
@@ -57,6 +56,32 @@ module.exports = {
                     },
                 },
             ],
+            include: path.resolve(__dirname, 'src/app'), // Only apply to Angular component styles
+        },
+        {
+            test: /\.(scss)$/,
+            include: path.resolve(__dirname, 'src/styles.scss'),
+            use: [
+              {
+                loader: 'style-loader'
+              },
+              {
+                loader: 'css-loader'
+              },
+              {
+                loader: 'postcss-loader',
+                options: {
+                  postcssOptions: {
+                    plugins: () => [
+                      require('autoprefixer')
+                    ]
+                  }
+                }
+              },
+              {
+                loader: 'sass-loader'
+              }
+            ]
         },
         {
             test: /\.(png|svg|jpg|jpeg|gif|ico)$/i,

@@ -1,12 +1,17 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { HeaderComponent } from "../../core/layout/header/header.component";
-import { Cartesian3, createOsmBuildingsAsync, Ion, Math as CesiumMath, Terrain, Viewer, createWorldBathymetryAsync, DirectionalLight, Globe, defined, Scene, Material, Color, HeadingPitchRoll } from 'cesium';
-import "cesium/Build/Cesium/Widgets/widgets.css";
+import { Cartesian3, createOsmBuildingsAsync, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, Globe, defined, Scene, Material, Color, HeadingPitchRoll } from 'cesium';
+import {MatSliderModule} from '@angular/material/slider';
+import {MatInputModule} from '@angular/material/input';
+import {FormsModule} from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';  
+import {MatCardModule} from '@angular/material/card';
+
 
 @Component({
   selector: 'app-visualisation',
   standalone: true,
-  imports: [HeaderComponent],
+  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
 })
@@ -21,6 +26,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   seaLevel = 0.0;
   maxHeight = 2000.0;
   countourLineSpacing = 500.0;
+  exaggeration = 1;
   scene: Scene | undefined;
   globe: Globe | undefined;
   viewModel = {};
@@ -100,6 +106,10 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
         0.00017507632714419685,
       ),
     });
+  }
+
+  valueChanged() {
+    this.updateExaggeration();
   }
 
   addSandcastleButtons(): void {
@@ -183,6 +193,17 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
       },
       translucent: false,
     });
+  }
+
+  updateExaggeration() {
+    if(this.scene){
+      const viewModel = {
+        exaggeration: this.exaggeration,
+        minHeight: this.minHeight,
+        maxHeight: this.maxHeight,
+      };
+      this.scene.verticalExaggeration = Number(viewModel.exaggeration);
+    }
   }
 
   updateGlobeMaterialUniforms(zoomMagnitude: number): void {
