@@ -6,12 +6,13 @@ import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';  
 import {MatCardModule} from '@angular/material/card';
+import {MatCheckboxModule} from '@angular/material/checkbox';
 
 
 @Component({
   selector: 'app-visualisation',
   standalone: true,
-  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule],
+  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
 })
@@ -21,6 +22,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   showContourLines = true;
   showElevationColorRamp = true;
   invertContourLines = false;
+  enableLighting = false;
+  enableFog = false;
 
   minHeight = -10000.0;
   seaLevel = 0.0;
@@ -61,7 +64,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     // Prevent the user from tilting beyond the ellipsoid surface
     this.scene.screenSpaceCameraController.maximumTiltAngle = Math.PI / 2.0;
 
-    this.globe.enableLighting = true;
+    this.globe.enableLighting = this.enableLighting;
     this.globe.maximumScreenSpaceError = 1.0;
 
     this.scene.light = new DirectionalLight({
@@ -91,9 +94,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
 
     this.updateGlobeMaterial();
 
-    // Add Sandcastle buttons
-    this.addSandcastleButtons();
-
     this.scene.camera.setView({
       destination: new Cartesian3(
         -3877002.181627189,
@@ -110,42 +110,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
 
   valueChanged() {
     this.updateExaggeration();
-  }
-
-  addSandcastleButtons(): void {
-    // Enable the toggles for contour lines, elevation color ramp, and inversion
-    const enableLighting = this.globe? this.globe.enableLighting : false;
-    this.addToggleButton("Lighting enabled", enableLighting, (checked) => {
-      if(this.globe){
-        this.globe.enableLighting = checked;
-      }
-    });
-
-    this.addToggleButton("Color ramp enabled", this.showElevationColorRamp, (checked) => {
-      this.showElevationColorRamp = checked;
-      this.updateGlobeMaterial();
-    });
-
-    this.addToggleButton("Contour lines enabled", this.showContourLines, (checked) => {
-      this.showContourLines = checked;
-      this.updateGlobeMaterial();
-    });
-
-    this.addToggleButton("Invert contour line color", this.invertContourLines, (checked) => {
-      this.invertContourLines = checked;
-      this.updateGlobeMaterial();
-    });
-  }
-
-  addToggleButton(label: string, initialValue: boolean, callback: (checked: boolean) => void): void {
-    // Implementation for a button to toggle options
-    const button = document.createElement('button');
-    button.innerText = label;
-    button.onclick = () => {
-      const checked = !initialValue;
-      callback(checked);
-    };
-    document.getElementById('toolbar')?.appendChild(button);
   }
 
   getColorRamp(): HTMLCanvasElement {
@@ -204,6 +168,31 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
       };
       this.scene.verticalExaggeration = Number(viewModel.exaggeration);
     }
+  }
+
+  activateLighting(){
+    if(this.globe){
+      this.globe.enableLighting = this.enableLighting;
+    }
+  }
+
+  activateFog() {
+    if(this.scene && this.globe) {
+      this.scene.fog.enabled = this.enableFog;
+      this.globe.showGroundAtmosphere = this.enableFog;
+    }
+  }
+
+  activateColourRamp() { 
+    this.updateGlobeMaterial();
+  }
+
+  enableContourLines() {
+    this.updateGlobeMaterial();
+  }
+
+  enableInvertContourLines() {
+    this.updateGlobeMaterial();
   }
 
   updateGlobeMaterialUniforms(zoomMagnitude: number): void {
@@ -281,6 +270,5 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     if(this.globe){
       this.globe.material = material;
     }
-    
   }
 }
