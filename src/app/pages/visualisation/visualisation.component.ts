@@ -1,6 +1,9 @@
-import { AfterViewInit, Component, EventEmitter, OnInit, Output } from '@angular/core';
-import { HeaderComponent } from "../../core/layout/header/header.component";
-import { Cartesian3, createOsmBuildingsAsync, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, Globe, defined, Scene, Material, Color, HeadingPitchRoll } from 'cesium';
+import {AfterViewInit, Component, OnInit} from '@angular/core';
+import {HeaderComponent} from "../../core/layout/header/header.component";
+import {Cartesian3, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, Globe, 
+  defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
+  JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
+  Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
@@ -22,7 +25,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   showContourLines = true;
   showElevationColorRamp = true;
   invertContourLines = false;
-  enableLighting = false;
+  enableLighting = true;
   enableFog = false;
 
   minHeight = -10000.0;
@@ -30,6 +33,11 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   maxHeight = 2000.0;
   countourLineSpacing = 500.0;
   exaggeration = 1;
+  startTime = JulianDate.fromDate(new Date(2018, 11, 12, 15));
+  velocityVector = new Cartesian3();
+  distance = new SampledProperty(Number);
+  position = new SampledPositionProperty();
+  velocityVectorProperty = new VelocityVectorProperty(this.position, false);
   scene: Scene | undefined;
   globe: Globe | undefined;
   viewModel = {};
@@ -42,8 +50,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
 
   async ngAfterViewInit(): Promise<void> {
     this.viewer = new Viewer('cesiumContainer', {
-      timeline: false,
-      animation: false,
+      shadows: true,
+      shouldAnimate: true,
       terrainProvider: await createWorldBathymetryAsync({
         requestVertexNormals: true,
       }),
@@ -54,6 +62,11 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
       minHeight: this.minHeight,
       maxHeight: this.maxHeight,
     };
+    
+    // this.createModel("cesium/static/models/cesium-drone.glb", 150.0);
+    this.setModelRoute(-150.0);
+    this.addEventsToModel("cesium/static/models/cesium-drone.glb");
+    this.addModelToView();
 
     this.viewer.baseLayerPicker.viewModel.selectedImagery =
       this.viewer.baseLayerPicker.viewModel.imageryProviderViewModels[11];
@@ -64,7 +77,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     // Prevent the user from tilting beyond the ellipsoid surface
     this.scene.screenSpaceCameraController.maximumTiltAngle = Math.PI / 2.0;
 
-    this.globe.enableLighting = this.enableLighting;
+    this.globe.enableLighting = !this.enableLighting;
     this.globe.maximumScreenSpaceError = 1.0;
 
     this.scene.light = new DirectionalLight({
@@ -172,7 +185,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
 
   activateLighting(){
     if(this.globe){
-      this.globe.enableLighting = this.enableLighting;
+      this.globe.enableLighting = !this.enableLighting;
     }
   }
 
@@ -271,4 +284,180 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
       this.globe.material = material;
     }
   }
+
+  createModel(url: string, height: number) {
+    if(this.viewer){
+      this.viewer.entities.removeAll();
+      const position = Cartesian3.fromDegrees(
+        -9.498140,
+        48.289806,
+        height,
+      );
+      const heading = cesiumMath.toRadians(135);
+      const pitch = 0;
+      const roll = 0;
+      const hpr = new HeadingPitchRoll(heading, pitch, roll);
+      const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
+    
+      const entity = this.viewer.entities.add({
+        name: url,
+        position: position,
+        orientation: orientation,
+        model: {
+          uri: url,
+          minimumPixelSize: 128,
+          maximumScale: 20000,
+          enableVerticalExaggeration: false,
+        },
+      });
+      this.viewer.trackedEntity = entity;
+    }
+  }
+
+  setModelRoute(height: number) {
+    if(this.viewer){
+      //Make sure viewer is at the desired time.
+      this.startTime = JulianDate.fromDate(new Date(2018, 11, 12, 15));
+      const totalSeconds = 150;
+      const stop = JulianDate.addSeconds(
+        this.startTime,
+        totalSeconds,
+        new JulianDate(),
+      );
+      this.viewer.clock.startTime = this.startTime.clone();
+      this.viewer.clock.stopTime = stop.clone();
+      this.viewer.clock.currentTime = this.startTime.clone();
+      this.viewer.clock.clockRange = ClockRange.LOOP_STOP;
+      this.viewer.timeline.zoomTo(this.startTime, stop);
+
+      // Create a path for our model by lerping between two positions.
+      this.position = new SampledPositionProperty();
+      this.distance = new SampledProperty(Number);
+      const startPosition = Cartesian3.fromDegrees(
+        -9.498140,
+        48.289806,
+        height,
+      );
+
+      // const startPosition = new Cartesian3(
+      //   -2379556.799372864,
+      //   -4665528.205030263,
+      //   3628013.106599678,
+      // );
+      
+      // 51.334837, -10.302794
+      const endPosition = Cartesian3.fromDegrees(
+        -10.302794,
+        51.334837,
+        height,
+      );
+      // const endPosition = new Cartesian3(
+      //   -2379603.7074103747,
+      //   -4665623.48990283,
+      //   3627860.82704567,
+      // );
+      // A velocity vector property will give us the entity's speed and direction at any given time.
+      this.velocityVectorProperty = new VelocityVectorProperty(this.position, false);
+      this.velocityVector = new Cartesian3();
+
+      const numberOfSamples = 100;
+      let prevLocation = startPosition;
+      let totalDistance = 0;
+      for (let i = 0; i <= numberOfSamples; ++i) {
+        const factor = i / numberOfSamples;
+        const time = JulianDate.addSeconds(
+          this.startTime,
+          factor * totalSeconds,
+          new JulianDate(),
+        );
+
+        // Lerp using a non-linear factor so that the model accelerates.
+        const locationFactor = Math.pow(factor, 2);
+        const location = Cartesian3.lerp(
+          startPosition,
+          endPosition,
+          locationFactor,
+          new Cartesian3(),
+        );
+        this.position.addSample(time, location);
+        this.distance.addSample(
+          time,
+          (totalDistance += Cartesian3.distance(location, prevLocation)),
+        );
+        prevLocation = location;
+      }
+    }
+  }
+
+  async addEventsToModel(modelUrl: string) {
+    if(this.viewer){
+      try {
+        const modelPrimitive = this.viewer.scene.primitives.add(
+          await Model.fromGltfAsync({
+            url: modelUrl,
+            scale: 4,
+            enableVerticalExaggeration: false,
+          }),
+        );
+      
+        modelPrimitive.readyEvent.addEventListener(() => {
+          modelPrimitive.activeAnimations.addAll({
+            loop: ModelAnimationLoop.REPEAT,
+            animationTime: (duration: number) => {
+              return this.distance.getValue(this.viewer?.clock.currentTime) / duration;
+            },
+            multiplier: 0.25,
+          });
+        });
+      
+        const rotation = new Matrix3();
+        this.viewer.scene.preUpdate.addEventListener(() => {
+          const time = this.viewer?.clock.currentTime;
+          const pos = this.position.getValue(time) ?? new Cartesian3(0, 0, 0);
+          const vel = this.velocityVectorProperty.getValue(time);
+          Cartesian3.normalize(vel, vel);
+          Transforms.rotationMatrixFromPositionVelocity(
+            pos,
+            vel,
+            this.viewer?.scene.globe.ellipsoid,
+            rotation,
+          );
+          Matrix4.fromRotationTranslation(
+            rotation,
+            pos,
+            modelPrimitive.modelMatrix,
+          );
+        });
+      } catch (error) {
+        window.alert(error);
+      }
+    }
+  }
+
+  updateSpeedLabel(time: JulianDate) {
+    this.velocityVectorProperty.getValue(time, this.velocityVector);
+    const metersPerSecond = Cartesian3.magnitude(this.velocityVector);
+    const kmPerHour = Math.round(metersPerSecond * 3.6);
+  
+    return `${kmPerHour} km/hr`;
+  }
+
+  addModelToView() {
+    if(this.viewer){
+      const modelLabel = this.viewer.entities.add({
+        position: this.position,
+        orientation: new VelocityOrientationProperty(this.position), // Automatically set the model's orientation to the direction it's facing.
+        label: {
+          text: this.updateSpeedLabel(this.startTime),
+          font: "20px sans-serif",
+          showBackground: true,
+          distanceDisplayCondition: new DistanceDisplayCondition(0.0, 100.0),
+          eyeOffset: new Cartesian3(0, 7.2, 0),
+        },
+      });
+      this.viewer.trackedEntity = modelLabel;
+      // modelLabel.viewFrom = new Cartesian3(-30.0, -10.0, 10.0);
+    }
+  }
+  
 }

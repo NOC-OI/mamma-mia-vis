@@ -1,6 +1,7 @@
 const path = require('path');
 const webpack = require("webpack");
 const cesiumSource = "./node_modules/cesium/Build/Cesium";
+const assetsSource = "./src/assets";
 const cesiumBaseUrl = "cesium/static";
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -107,6 +108,7 @@ module.exports = {
                 { from: path.join(cesiumSource, "ThirdParty"), to: `${cesiumBaseUrl}/ThirdParty`, },
                 { from: path.join(cesiumSource, "Assets"), to: `${cesiumBaseUrl}/Assets`, },
                 { from: path.join(cesiumSource, "Widgets"), to: `${cesiumBaseUrl}/Widgets`, },
+                { from: path.join(assetsSource, "cesium-drone"), to: `${cesiumBaseUrl}/models`, },
             ],}),
         new webpack.DefinePlugin({
             // Define relative base path in cesium for loading assets
