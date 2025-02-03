@@ -3,7 +3,7 @@ import {HeaderComponent} from "../../core/layout/header/header.component";
 import {Cartesian3, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, Globe, 
   defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
   JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
-  Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition} from 'cesium';
+  Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition, Terrain} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
@@ -65,7 +65,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     
     // this.createModel("cesium/static/models/cesium-drone.glb", 150.0);
     this.setModelRoute(-150.0);
-    this.addEventsToModel("cesium/static/models/cesium-drone.glb");
+    this.addEventsToModel("cesium/static/models/autosub-long-range.glb");
     this.addModelToView();
 
     this.viewer.baseLayerPicker.viewModel.selectedImagery =

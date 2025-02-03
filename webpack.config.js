@@ -108,7 +108,7 @@ module.exports = {
                 { from: path.join(cesiumSource, "ThirdParty"), to: `${cesiumBaseUrl}/ThirdParty`, },
                 { from: path.join(cesiumSource, "Assets"), to: `${cesiumBaseUrl}/Assets`, },
                 { from: path.join(cesiumSource, "Widgets"), to: `${cesiumBaseUrl}/Widgets`, },
-                { from: path.join(assetsSource, "cesium-drone"), to: `${cesiumBaseUrl}/models`, },
+                { from: path.join(assetsSource, "autosub-long-range"), to: `${cesiumBaseUrl}/models`, },
             ],}),
         new webpack.DefinePlugin({
             // Define relative base path in cesium for loading assets
