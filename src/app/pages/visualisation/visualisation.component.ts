@@ -7,9 +7,11 @@ import {Cartesian3, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, G
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';  
+import {MatFormFieldModule} from '@angular/material/form-field';  
 import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
+import {CampaignService} from '../../services/campaign.service';
+import {TrajectoryData} from '../../services/campaign.interface';
 
 
 @Component({
@@ -42,10 +44,14 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   globe: Globe | undefined;
   viewModel = {};
 
-  constructor() { }
+  trajectoryData: TrajectoryData | null = null;
+  errorMessage: string | null = null;
+
+  constructor(private campaignService: CampaignService) { }
 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
+    this.getVehicleTrajectory()
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -63,8 +69,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
       maxHeight: this.maxHeight,
     };
     
-    // this.createModel("cesium/static/models/cesium-drone.glb", 150.0);
-    this.setModelRoute(-150.0);
+    this.setModelRoute();
     this.addEventsToModel("cesium/static/models/autosub-long-range.glb");
     this.addModelToView();
 
@@ -94,12 +99,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
         scratchNormal,
       ) : new Cartesian3();
       const negativeNormal = Cartesian3.negate(surfaceNormal, surfaceNormal);
-      // if(this.scene){
-      //   this.scene.light.direction = Cartesian3.normalize(
-      //     Cartesian3.add(negativeNormal, camera.rightWC, surfaceNormal),
-      //     this.scene?.light.direction,
-      //   );
-      // }
 
       const zoomMagnitude = Cartesian3.magnitude(camera.positionWC) / cameraMaxHeight;
       this.updateGlobeMaterialUniforms(zoomMagnitude);
@@ -118,6 +117,24 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
         -0.7139104486007932,
         0.00017507632714419685,
       ),
+    });
+  }
+
+  getVehicleTrajectory(){
+    this.campaignService.getVehicleTrajectory().subscribe({
+      next: (data) => {
+        this.trajectoryData = data;
+        this.trajectoryData.trajectory.forEach(point => {
+          if (typeof point.datetime === 'number') { // Check if it's a number (milliseconds)
+              point.datetime = new Date(point.datetime).toISOString(); // Convert to ISO string.
+          }
+        });
+        this.errorMessage = null; // Clear any previous error messages
+      },
+      error: (error) => {
+        this.errorMessage = error.message;
+        console.error('Error fetching trajectory data:', error);
+      }
     });
   }
 
@@ -314,79 +331,87 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     }
   }
 
-  setModelRoute(height: number) {
-    if(this.viewer){
-      //Make sure viewer is at the desired time.
-      this.startTime = JulianDate.fromDate(new Date(2018, 11, 12, 15));
-      const totalSeconds = 150;
-      const stop = JulianDate.addSeconds(
-        this.startTime,
-        totalSeconds,
-        new JulianDate(),
-      );
-      this.viewer.clock.startTime = this.startTime.clone();
-      this.viewer.clock.stopTime = stop.clone();
-      this.viewer.clock.currentTime = this.startTime.clone();
-      this.viewer.clock.clockRange = ClockRange.LOOP_STOP;
-      this.viewer.timeline.zoomTo(this.startTime, stop);
+  setModelRoute() {
+    if (this.viewer && this.trajectoryData && this.trajectoryData.trajectory && this.trajectoryData.trajectory.length > 0) { // Check if trajectoryData and trajectory exists and is not empty.
+      const firstDateTimeString = this.trajectoryData.trajectory[0].datetime;
+      const lastDateTimeString = this.trajectoryData.trajectory[this.trajectoryData.trajectory.length - 1].datetime;
 
-      // Create a path for our model by lerping between two positions.
-      this.position = new SampledPositionProperty();
-      this.distance = new SampledProperty(Number);
-      const startPosition = Cartesian3.fromDegrees(
-        -9.498140,
-        48.289806,
-        height,
-      );
+      try {
+        const startDate = this.formatDateString(firstDateTimeString);
+        const endDate = this.formatDateString(lastDateTimeString);
+  
+        if (!startDate ||!endDate) {
+          console.error("Error parsing start or end time. Check the format of your datetime strings.");
+          return;
+        }
+  
+        // 1. Get the timezone offset in minutes:
+        const timezoneOffsetMinutes = startDate.getTimezoneOffset();
+  
+        // 2. Create a new Date object that represents the time in UTC:
+        const utcStartDate = new Date(startDate.getTime() - timezoneOffsetMinutes * 60 * 1000);
+        const utcEndDate = new Date(endDate.getTime() - timezoneOffsetMinutes * 60 * 1000);
+  
+  
+        this.startTime = JulianDate.fromDate(utcStartDate); // Use the UTC Date
+        const endTime = JulianDate.fromDate(utcEndDate);     // Use the UTC Date
 
-      // const startPosition = new Cartesian3(
-      //   -2379556.799372864,
-      //   -4665528.205030263,
-      //   3628013.106599678,
-      // );
-      
-      // 51.334837, -10.302794
-      const endPosition = Cartesian3.fromDegrees(
-        -10.302794,
-        51.334837,
-        height,
-      );
-      // const endPosition = new Cartesian3(
-      //   -2379603.7074103747,
-      //   -4665623.48990283,
-      //   3627860.82704567,
-      // );
-      // A velocity vector property will give us the entity's speed and direction at any given time.
-      this.velocityVectorProperty = new VelocityVectorProperty(this.position, false);
-      this.velocityVector = new Cartesian3();
+        this.viewer.clock.startTime = this.startTime.clone();
+        this.viewer.clock.stopTime = endTime.clone();
+        this.viewer.clock.currentTime = this.startTime.clone();
+        this.viewer.clock.clockRange = ClockRange.LOOP_STOP;
+        this.viewer.timeline.zoomTo(this.startTime, endTime);
 
-      const numberOfSamples = 100;
-      let prevLocation = startPosition;
-      let totalDistance = 0;
-      for (let i = 0; i <= numberOfSamples; ++i) {
-        const factor = i / numberOfSamples;
-        const time = JulianDate.addSeconds(
-          this.startTime,
-          factor * totalSeconds,
-          new JulianDate(),
-        );
+        this.position = new SampledPositionProperty();
+        this.distance = new SampledProperty(Number);
+        this.velocityVectorProperty = new VelocityVectorProperty(this.position, false);
 
-        // Lerp using a non-linear factor so that the model accelerates.
-        const locationFactor = Math.pow(factor, 2);
-        const location = Cartesian3.lerp(
-          startPosition,
-          endPosition,
-          locationFactor,
-          new Cartesian3(),
-        );
-        this.position.addSample(time, location);
-        this.distance.addSample(
-          time,
-          (totalDistance += Cartesian3.distance(location, prevLocation)),
-        );
-        prevLocation = location;
+        let prevLocation: Cartesian3 | undefined = undefined;
+        let totalDistance = 0;
+
+        for (const point of this.trajectoryData.trajectory) {
+          const timeString = point.datetime;
+          const formattedTimeString = this.formatDateString(timeString); // Format the time string
+          const time = JulianDate.fromDate(formattedTimeString); // Use the formatted string
+          const location = Cartesian3.fromDegrees(point.longitude, point.latitude, point.depth);
+
+          this.position.addSample(time, location);
+
+          if (prevLocation) {
+            totalDistance += Cartesian3.distance(location, prevLocation);
+          }
+          this.distance.addSample(time, totalDistance);
+          prevLocation = location;
+        }
+      } catch (error) {
+        console.error("Error setting model route:", error);
       }
     }
+  }
+
+  formatDateString(dateString: string): Date {
+      // 1. Remove trailing 'Z' if present 
+      dateString = dateString.replace(/Z$/, '');
+      // 2. Remove fractional seconds (microseconds)
+      const parts = dateString.split('.');
+      if (parts.length > 1) {
+        dateString = parts[0]; // Take only the part before the decimal
+      }
+      
+      try {     
+        const date = new Date(dateString); // Attempt to create a Date object      
+      if (isNaN(date.getTime())) { // Check if the Date object is valid     
+        console.error("Invalid date string:", dateString);      
+        return new Date(); // Return null if the date is invalid      
+      }
+      
+      return date; // Return the Date object
+      
+      } catch (error) {
+      console.error("Error parsing date string:", dateString, error);
+      return new Date(); // Return null if there's an error
+      }
+    
   }
 
   async addEventsToModel(modelUrl: string) {
@@ -399,7 +424,10 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
             enableVerticalExaggeration: false,
           }),
         );
-      
+
+        /** This event listener ensures the animation starts after the model has fully loaded.
+         *  This is important because you can't animate a model that hasn't loaded.
+         * */ 
         modelPrimitive.readyEvent.addEventListener(() => {
           modelPrimitive.activeAnimations.addAll({
             loop: ModelAnimationLoop.REPEAT,
@@ -411,22 +439,27 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
         });
       
         const rotation = new Matrix3();
+        // This event listener is called before each frame is rendered. It's used to update the model's position and orientation
         this.viewer.scene.preUpdate.addEventListener(() => {
           const time = this.viewer?.clock.currentTime;
           const pos = this.position.getValue(time) ?? new Cartesian3(0, 0, 0);
           const vel = this.velocityVectorProperty.getValue(time);
-          Cartesian3.normalize(vel, vel);
-          Transforms.rotationMatrixFromPositionVelocity(
-            pos,
-            vel,
-            this.viewer?.scene.globe.ellipsoid,
-            rotation,
-          );
-          Matrix4.fromRotationTranslation(
-            rotation,
-            pos,
-            modelPrimitive.modelMatrix,
-          );
+          if (vel){
+            Cartesian3.normalize(vel, vel);
+            // Calculates the rotation matrix based on the model's position and velocity. This is essential for making the model face the direction it's moving.
+            Transforms.rotationMatrixFromPositionVelocity(
+              pos,
+              vel,
+              this.viewer?.scene.globe.ellipsoid,
+              rotation,
+            );
+            // Creates the model matrix, combining the rotation and translation (position). This matrix is then applied to the model (modelPrimitive.modelMatrix) to position and orient it in the scene.
+            Matrix4.fromRotationTranslation(
+              rotation,
+              pos,
+              modelPrimitive.modelMatrix,
+            );
+          }
         });
       } catch (error) {
         window.alert(error);
