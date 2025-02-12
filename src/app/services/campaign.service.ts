@@ -10,7 +10,7 @@ import {TrajectoryData} from './campaign.interface';
 })
 export class CampaignService {
 
-  private apiUrl = 'http://127.0.0.1:8040/zarr_lat_lon?url=./assets/data_inputs/campaign_mm1.zarr&group=mission_mm1/trajectory';
+  private apiUrl = 'http://127.0.0.1:8040/zarr_trajectory?url=./assets/data_inputs/campaign_mm1.zarr&group=mission_mm1/trajectory';
 
   constructor(private http: HttpClient) { }
 
