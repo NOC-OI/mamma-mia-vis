@@ -3,7 +3,7 @@ import {HeaderComponent} from "../../core/layout/header/header.component";
 import {Cartesian3, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, Globe, 
   defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
   JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
-  Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition, Terrain} from 'cesium';
+  Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
@@ -30,6 +30,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   enableLighting = true;
   enableFog = false;
 
+  DEPTH_FACTOR = -1
   minHeight = -10000.0;
   seaLevel = 0.0;
   maxHeight = 2000.0;
@@ -70,7 +71,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     };
     
     this.setModelRoute();
-    this.addEventsToModel("cesium/static/models/autosub-long-range.glb");
+    this.addEventsToModel("cesium/static/models/autosub-long-range-v2.glb");
     this.addModelToView();
 
     this.viewer.baseLayerPicker.viewModel.selectedImagery =
@@ -373,7 +374,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
           const timeString = point.datetime;
           const formattedTimeString = this.formatDateString(timeString); // Format the time string
           const time = JulianDate.fromDate(formattedTimeString); // Use the formatted string
-          const location = Cartesian3.fromDegrees(point.longitude, point.latitude, point.depth);
+          const location = Cartesian3.fromDegrees(point.longitude, point.latitude, point.depth * this.DEPTH_FACTOR);
 
           this.position.addSample(time, location);
 
@@ -486,7 +487,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
           showBackground: true,
           distanceDisplayCondition: new DistanceDisplayCondition(0.0, 100.0),
           eyeOffset: new Cartesian3(0, 7.2, 0),
-        },
+        }
       });
       this.viewer.trackedEntity = modelLabel;
       // modelLabel.viewFrom = new Cartesian3(-30.0, -10.0, 10.0);
