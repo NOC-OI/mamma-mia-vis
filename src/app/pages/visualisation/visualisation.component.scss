@@ -5,3 +5,23 @@
 mat-slider {
   width: 100px;
 }
+
+.container-stack {
+  position: relative;
+}
+
+.actions-panel {
+  position: absolute;
+  top: 1rem;
+  left: 2rem;
+  z-index: 2; 
+  width: 20vw;
+  min-width: 365px;
+}
+
+.simulation-panel {
+   background-color: #f0f0f0;
+   padding: 0.5rem;
+   border: 1px solid #ddd;
+   height: 95vh;
+}
