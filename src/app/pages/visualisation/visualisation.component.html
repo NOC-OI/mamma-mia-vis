@@ -9,7 +9,7 @@
                             <mat-label><b>Elevation</b></mat-label>
                         </div>
                         <div class="col" id="colorRampPanel">
-                            <div class="d-flex flex-row">
+                            <div class="d-flex flex-row justify-content-between">
                                 <div class="p-1"><mat-label for="colorRamp">-10000m</mat-label></div>
                                 <div class="p-1"><canvas id="colorRamp"></canvas></div>
                                 <div class="p-1"> <mat-label >2000m</mat-label></div>
@@ -52,7 +52,7 @@
                             <mat-checkbox [(ngModel)]="showContourLines" (ngModelChange)="enableContourLines()">Contour lines enabled</mat-checkbox>
                         </div>
                         <div class="col">
-                            <mat-checkbox [(ngModel)]="invertContourLines" (ngModelChange)="enableInvertContourLines()">Invert contour line colour</mat-checkbox>
+                            <!-- <mat-checkbox [(ngModel)]="invertContourLines" (ngModelChange)="enableInvertContourLines()">Invert contour line colour</mat-checkbox> -->
                         </div>
                     </div>
                 </mat-card-content>

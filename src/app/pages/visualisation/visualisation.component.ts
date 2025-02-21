@@ -43,7 +43,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   velocityVectorProperty = new VelocityVectorProperty(this.position, false);
   scene: Scene | undefined;
   globe: Globe | undefined;
-  viewModel = {};
 
   trajectoryData: TrajectoryData | null = null;
   errorMessage: string | null = null;
@@ -64,12 +63,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
       }),
     });
 
-    this.viewModel = {
-      exaggeration: this.scene?.verticalExaggeration,
-      minHeight: this.minHeight,
-      maxHeight: this.maxHeight,
-    };
-    
     this.setModelRoute();
     this.addEventsToModel("cesium/static/models/autosub-long-range-v2.glb");
     this.addModelToView();
@@ -83,7 +76,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     // Prevent the user from tilting beyond the ellipsoid surface
     this.scene.screenSpaceCameraController.maximumTiltAngle = Math.PI / 2.0;
 
-    this.globe.enableLighting = !this.enableLighting;
+    this.globe.enableLighting = false;
     this.globe.maximumScreenSpaceError = 1.0;
 
     this.scene.light = new DirectionalLight({
@@ -145,17 +138,17 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
 
   getColorRamp(): HTMLCanvasElement {
     const ramp = document.getElementById("colorRamp") as HTMLCanvasElement;
-    ramp.width = 100;
-    ramp.height = 15;
+    ramp.width = 170;
+    ramp.height = 20;
     const ctx = ramp.getContext("2d");
     if(ctx) {
-      const grd = ctx.createLinearGradient(0, 0, 100, 0);
+      const grd = ctx.createLinearGradient(0, 0, 170, 0);
 
       const d = (height: number) => (height - this.minHeight) / (this.maxHeight - this.minHeight);
       grd?.addColorStop(d(this.maxHeight), "#B79E6C");
       grd?.addColorStop(d(100.0), "#FBFFEE");
       grd?.addColorStop(d(0.0), "#F9FCCA");
-      grd?.addColorStop(d(-500.0), "#BDE7AD");
+      grd?.addColorStop(d(-500.0), "#BDE7AD"); 
       grd?.addColorStop(d(-1000.0), "#81D2A3");
       grd?.addColorStop(d(-1500.0), "#5AB7A4");
       grd?.addColorStop(d(-2000.0), "#4C9AA0");
@@ -192,12 +185,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
 
   updateExaggeration() {
     if(this.scene){
-      const viewModel = {
-        exaggeration: this.exaggeration,
-        minHeight: this.minHeight,
-        maxHeight: this.maxHeight,
-      };
-      this.scene.verticalExaggeration = Number(viewModel.exaggeration);
+      this.scene.verticalExaggeration = Number(this.exaggeration);
     }
   }
 
@@ -266,9 +254,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
         shadingUniforms = material.materials.contourMaterial.uniforms;
         shadingUniforms.width = 1.0;
         shadingUniforms.spacing = this.countourLineSpacing * verticalExaggeration;
-        shadingUniforms.color = this.invertContourLines
-          ? Color.WHITE.withAlpha(0.5)
-          : Color.BLACK.withAlpha(0.5);
+
+        shadingUniforms.color = this.invertContourLines ? Color.WHITE.withAlpha(0.5) : Color.BLACK.withAlpha(0.5);
         if(this.globe){
           this.globe.material = material;
         }
