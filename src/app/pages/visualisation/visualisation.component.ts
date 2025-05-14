@@ -1,9 +1,10 @@
-import {AfterViewInit, Component, OnInit} from '@angular/core';
+import {AfterViewInit, Component, OnDestroy, OnInit} from '@angular/core';
 import {HeaderComponent} from "../../core/layout/header/header.component";
 import {Cartesian3, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, Globe, 
   defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
   JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
-  Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition} from 'cesium';
+  Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition,
+  Ellipsoid} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
@@ -11,17 +12,19 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {CampaignService} from '../../services/campaign.service';
-import {TrajectoryData} from '../../services/campaign.interface';
+import {MetricsData, TrajectoryData} from '../../services/campaign.interface';
+import { AnimationStateService } from '../../services/animation-state.service';
+import { MetricChartComponent } from "../../metric-chart/metric-chart.component";
 
 
 @Component({
   selector: 'app-visualisation',
   standalone: true,
-  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule],
+  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MetricChartComponent],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
 })
-export class VisualisationComponent implements OnInit, AfterViewInit {
+export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy {
 
   viewer: Viewer | undefined;
   showContourLines = true;
@@ -30,7 +33,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   enableLighting = true;
   enableFog = false;
 
-  DEPTH_FACTOR = -1
+  DEPTH_FACTOR = -1;
   minHeight = -10000.0;
   seaLevel = 0.0;
   maxHeight = 2000.0;
@@ -40,18 +43,22 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
   velocityVector = new Cartesian3();
   distance = new SampledProperty(Number);
   position = new SampledPositionProperty();
+  nitrateProperty: SampledProperty = new SampledProperty(Number);
   velocityVectorProperty = new VelocityVectorProperty(this.position, false);
   scene: Scene | undefined;
   globe: Globe | undefined;
 
   trajectoryData: TrajectoryData | null = null;
+  metricsData: MetricsData | null = null;
   errorMessage: string | null = null;
+  private preUpdateListener: (() => void) | undefined;
 
-  constructor(private campaignService: CampaignService) { }
+  constructor(private campaignService: CampaignService, private animationStateService: AnimationStateService) { }
 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
-    this.getVehicleTrajectory()
+    this.getVehicleTrajectory();
+    this.getMetricsData();
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -64,6 +71,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     });
 
     this.setModelRoute();
+    this.processMetricsData();
     this.addEventsToModel("cesium/static/models/autosub-long-range-v2.glb");
     this.addModelToView();
 
@@ -114,6 +122,18 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
     });
   }
 
+  ngOnDestroy(): void {
+    // Clean up Cesium resources
+    if (this.viewer) {
+      if (this.preUpdateListener) {
+        this.viewer.scene.preUpdate.removeEventListener(this.preUpdateListener);
+        this.preUpdateListener = undefined;
+      }
+      this.viewer.destroy();
+      this.viewer = undefined;
+    }
+  }
+
   getVehicleTrajectory(){
     this.campaignService.getVehicleTrajectory().subscribe({
       next: (data) => {
@@ -130,6 +150,45 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
         console.error('Error fetching trajectory data:', error);
       }
     });
+  }
+
+  getMetricsData() {
+    this.campaignService.getMetricsData().subscribe({
+      next: (data) => {
+        this.metricsData = data;
+        this.metricsData.metrics.forEach(metricsReading => {
+          if (typeof metricsReading.datetime === 'number') {
+              metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
+          }
+        });
+        this.errorMessage = null;
+      },
+      error: (error) => {
+        this.errorMessage = error.message;
+        console.error('Error fetching trajectory data:', error);
+      }
+    });
+  }
+
+  processMetricsData(): void {
+    if (!this.metricsData || !this.metricsData.metrics || this.metricsData.metrics.length === 0) {
+        console.warn("No metrics data available to process.");
+        return;
+    }
+
+    this.nitrateProperty = new SampledProperty(Number); // Reinitialize
+
+    try {
+        for (const reading of this.metricsData.metrics) {
+            if (typeof reading.nitrate === 'number' && !isNaN(reading.nitrate)) { // Check if nitrate is a valid number
+                const time = JulianDate.fromDate(this.formatDateString(reading.datetime));
+                this.nitrateProperty.addSample(time, reading.nitrate);
+            }
+        }
+        console.log("Metrics data processed into SampledProperty.");
+    } catch (error) {
+        console.error("Error processing metrics data:", error);
+    }
   }
 
   valueChanged() {
@@ -427,28 +486,51 @@ export class VisualisationComponent implements OnInit, AfterViewInit {
         });
       
         const rotation = new Matrix3();
+        const ellipsoid = this.viewer.scene.globe?.ellipsoid ?? Ellipsoid.WGS84; // Get ellipsoid
+
         // This event listener is called before each frame is rendered. It's used to update the model's position and orientation
-        this.viewer.scene.preUpdate.addEventListener(() => {
-          const time = this.viewer?.clock.currentTime;
-          const pos = this.position.getValue(time) ?? new Cartesian3(0, 0, 0);
-          const vel = this.velocityVectorProperty.getValue(time);
-          if (vel){
+        // Store the listener function to remove it later
+        this.preUpdateListener = () => {
+          if (!this.viewer) return; // Guard clause
+
+          const time = this.viewer.clock.currentTime;
+          const pos = this.position.getValue(time); // Can be undefined if time is outside samples
+          const vel = this.velocityVectorProperty.getValue(time); // Can be undefined
+          const dist = this.distance.getValue(time); // Can be undefined
+          const currentNitrate = this.nitrateProperty.getValue(time);
+
+          let altitude: number | undefined = undefined;
+          if (pos) {
+             const cartographic = ellipsoid.cartesianToCartographic(pos);
+             altitude = cartographic?.height; // Get altitude from cartographic coordinates
+          }
+
+          // *** UPDATE THE SHARED SERVICE ***
+          this.animationStateService.updateState(time, pos, vel, altitude, dist, currentNitrate);
+          // *********************************
+
+          // Update model transform (only if pos and vel are valid)
+          if (pos && vel){
             Cartesian3.normalize(vel, vel);
-            // Calculates the rotation matrix based on the model's position and velocity. This is essential for making the model face the direction it's moving.
             Transforms.rotationMatrixFromPositionVelocity(
               pos,
               vel,
-              this.viewer?.scene.globe.ellipsoid,
+              ellipsoid,
               rotation,
             );
-            // Creates the model matrix, combining the rotation and translation (position). This matrix is then applied to the model (modelPrimitive.modelMatrix) to position and orient it in the scene.
             Matrix4.fromRotationTranslation(
               rotation,
               pos,
-              modelPrimitive.modelMatrix,
+              modelPrimitive.modelMatrix, // Apply directly to the loaded model
             );
+          } else if (pos) {
+              // Handle cases where velocity might be undefined (e.g., start/end points)
+              // Set a default orientation or keep the last known orientation if needed
+              Matrix4.fromTranslation(pos, modelPrimitive.modelMatrix); // Just set position
           }
-        });
+        };
+
+        this.viewer.scene.preUpdate.addEventListener(this.preUpdateListener);
       } catch (error) {
         window.alert(error);
       }

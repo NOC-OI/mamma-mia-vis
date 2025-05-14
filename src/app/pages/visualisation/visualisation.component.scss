@@ -25,3 +25,12 @@ mat-slider {
    border: 1px solid #ddd;
    height: 95vh;
 }
+
+.metrics-panel {
+  position: absolute;
+  top: 4rem;
+  right: 2rem;
+  z-index: 6; 
+  width: 20vw;
+  min-width: 365px;
+}

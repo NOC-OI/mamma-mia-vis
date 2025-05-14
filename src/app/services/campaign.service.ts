@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
 import {catchError, retry} from 'rxjs/operators';
-import {TrajectoryData} from './campaign.interface';
+import {MetricsData, TrajectoryData} from './campaign.interface';
 
 
 @Injectable({
@@ -10,15 +10,25 @@ import {TrajectoryData} from './campaign.interface';
 })
 export class CampaignService {
 
-  private apiUrl = 'http://127.0.0.1:8040/zarr_trajectory?url=./assets/data_inputs/campaign_mm1.zarr&group=mission_mm1/trajectory';
+  private apiTrajectoryUrl = 'http://127.0.0.1:8040/zarr_trajectory?url=./assets/data_inputs/campaign_2.zarr&group=mission_1/trajectory';
+  private apiMetricsUrl = 'http://127.0.0.1:8040/zarr_metrics?url=./assets/data_inputs/campaign_2.zarr&trajectory_group=mission_1/trajectory&reality_group=mission_1/reality';
+
 
   constructor(private http: HttpClient) { }
 
   getVehicleTrajectory(): Observable<TrajectoryData> {
-    return this.http.get<TrajectoryData>(this.apiUrl)
+    return this.http.get<TrajectoryData>(this.apiTrajectoryUrl)
     .pipe(
         retry(3), // Retry up to 3 times if the request fails
         catchError(this.handleError) // Handle errors
+      );
+  }
+
+  getMetricsData(): Observable<MetricsData> {
+    return this.http.get<MetricsData>(this.apiMetricsUrl)
+    .pipe(
+        retry(3),
+        catchError(this.handleError)
       );
   }
 
