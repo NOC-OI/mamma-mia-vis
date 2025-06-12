@@ -12,7 +12,7 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {CampaignService} from '../../services/campaign.service';
-import {MetricsData, TrajectoryData} from '../../services/campaign.interface';
+import {MetricsData, MetricsUnits, TrajectoryData} from '../../services/campaign.interface';
 import { AnimationStateService } from '../../services/animation-state.service';
 import { MetricChartComponent } from "../../metric-chart/metric-chart.component";
 
@@ -43,13 +43,16 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   velocityVector = new Cartesian3();
   distance = new SampledProperty(Number);
   position = new SampledPositionProperty();
-  nitrateProperty: SampledProperty = new SampledProperty(Number);
+  conductivityProperty: SampledProperty = new SampledProperty(Number);
+  temperatureProperty: SampledProperty = new SampledProperty(Number);
+  pressureProperty: SampledProperty = new SampledProperty(Number);
   velocityVectorProperty = new VelocityVectorProperty(this.position, false);
   scene: Scene | undefined;
   globe: Globe | undefined;
 
   trajectoryData: TrajectoryData | null = null;
   metricsData: MetricsData | null = null;
+  metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
   private preUpdateListener: (() => void) | undefined;
 
@@ -58,10 +61,63 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
     this.getVehicleTrajectory();
-    this.getMetricsData();
+    // this.getMetricsData();
   }
 
   async ngAfterViewInit(): Promise<void> {
+  }
+
+  ngOnDestroy(): void {
+    // Clean up Cesium resources
+    if (this.viewer) {
+      if (this.preUpdateListener) {
+        this.viewer.scene.preUpdate.removeEventListener(this.preUpdateListener);
+        this.preUpdateListener = undefined;
+      }
+      this.viewer.destroy();
+      this.viewer = undefined;
+    }
+  }
+
+  getVehicleTrajectory(){
+    this.campaignService.getVehicleTrajectory().subscribe({
+      next: (data) => {
+        this.trajectoryData = data;
+        this.trajectoryData.trajectory.forEach(point => {
+          if (typeof point.datetime === 'number') { // Check if it's a number (milliseconds)
+              point.datetime = new Date(point.datetime).toISOString(); // Convert to ISO string.
+          }
+        });
+        this.errorMessage = null; // Clear any previous error messages
+        this.getMetricsData();
+      },
+      error: (error) => {
+        this.errorMessage = error.message;
+        console.error('Error fetching trajectory data:', error);
+      }
+    });
+  }
+
+  getMetricsData() {
+    this.campaignService.getMetricsData().subscribe({
+      next: (data) => {
+        this.metricsData = data;
+        this.metricsData.metrics.forEach(metricsReading => {
+          if (typeof metricsReading.datetime === 'number') {
+              metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
+          }
+        });
+        this.errorMessage = null;
+        this.setGlobalScene();
+      },
+      error: (error) => {
+        this.errorMessage = error.message;
+        console.error('Error fetching metrics data:', error);
+      }
+    });
+  }
+
+  async setGlobalScene(){
     this.viewer = new Viewer('cesiumContainer', {
       shadows: true,
       shouldAnimate: true,
@@ -72,7 +128,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
     this.setModelRoute();
     this.processMetricsData();
-    this.addEventsToModel("cesium/static/models/autosub-long-range-v2.glb");
+    this.addEventsToModel("cesium/static/models/slocum-glider-v1.glb");
     this.addModelToView();
 
     this.viewer.baseLayerPicker.viewModel.selectedImagery =
@@ -122,67 +178,30 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     });
   }
 
-  ngOnDestroy(): void {
-    // Clean up Cesium resources
-    if (this.viewer) {
-      if (this.preUpdateListener) {
-        this.viewer.scene.preUpdate.removeEventListener(this.preUpdateListener);
-        this.preUpdateListener = undefined;
-      }
-      this.viewer.destroy();
-      this.viewer = undefined;
-    }
-  }
-
-  getVehicleTrajectory(){
-    this.campaignService.getVehicleTrajectory().subscribe({
-      next: (data) => {
-        this.trajectoryData = data;
-        this.trajectoryData.trajectory.forEach(point => {
-          if (typeof point.datetime === 'number') { // Check if it's a number (milliseconds)
-              point.datetime = new Date(point.datetime).toISOString(); // Convert to ISO string.
-          }
-        });
-        this.errorMessage = null; // Clear any previous error messages
-      },
-      error: (error) => {
-        this.errorMessage = error.message;
-        console.error('Error fetching trajectory data:', error);
-      }
-    });
-  }
-
-  getMetricsData() {
-    this.campaignService.getMetricsData().subscribe({
-      next: (data) => {
-        this.metricsData = data;
-        this.metricsData.metrics.forEach(metricsReading => {
-          if (typeof metricsReading.datetime === 'number') {
-              metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
-          }
-        });
-        this.errorMessage = null;
-      },
-      error: (error) => {
-        this.errorMessage = error.message;
-        console.error('Error fetching trajectory data:', error);
-      }
-    });
-  }
-
   processMetricsData(): void {
     if (!this.metricsData || !this.metricsData.metrics || this.metricsData.metrics.length === 0) {
         console.warn("No metrics data available to process.");
         return;
     }
 
-    this.nitrateProperty = new SampledProperty(Number); // Reinitialize
+    this.conductivityProperty = new SampledProperty(Number); // Reinitialize
+    this.temperatureProperty = new SampledProperty(Number);
+    this.pressureProperty = new SampledProperty(Number);
 
     try {
+        console.log('METRICS DATA to PROCESS: ', this.metricsData)
         for (const reading of this.metricsData.metrics) {
-            if (typeof reading.nitrate === 'number' && !isNaN(reading.nitrate)) { // Check if nitrate is a valid number
+            if (typeof reading.conductivity === 'number' && !isNaN(reading.conductivity)) { // Check if Conductivity is a valid number
                 const time = JulianDate.fromDate(this.formatDateString(reading.datetime));
-                this.nitrateProperty.addSample(time, reading.nitrate);
+                this.conductivityProperty.addSample(time, reading.conductivity);
+            }
+            if (typeof reading.temperature == 'number' && !isNaN(reading.temperature)) {
+              const time = JulianDate.fromDate(this.formatDateString(reading.datetime));
+              this.temperatureProperty.addSample(time, reading.temperature);
+            }
+            if(typeof reading.pressure == 'number' && !isNaN(reading.pressure)){
+              const time = JulianDate.fromDate(this.formatDateString(reading.datetime));
+              this.pressureProperty.addSample(time, reading.pressure);
             }
         }
         console.log("Metrics data processed into SampledProperty.");
@@ -353,8 +372,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     if(this.viewer){
       this.viewer.entities.removeAll();
       const position = Cartesian3.fromDegrees(
-        -9.498140,
-        48.289806,
+        -24.14199999861106,
+        23.79999999949824,
         height,
       );
       const heading = cesiumMath.toRadians(135);
@@ -471,7 +490,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
             enableVerticalExaggeration: false,
           }),
         );
-
         /** This event listener ensures the animation starts after the model has fully loaded.
          *  This is important because you can't animate a model that hasn't loaded.
          * */ 
@@ -484,7 +502,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
             multiplier: 0.25,
           });
         });
-      
         const rotation = new Matrix3();
         const ellipsoid = this.viewer.scene.globe?.ellipsoid ?? Ellipsoid.WGS84; // Get ellipsoid
 
@@ -492,12 +509,15 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
         // Store the listener function to remove it later
         this.preUpdateListener = () => {
           if (!this.viewer) return; // Guard clause
-
+          
           const time = this.viewer.clock.currentTime;
           const pos = this.position.getValue(time); // Can be undefined if time is outside samples
+          if (!pos) return;
           const vel = this.velocityVectorProperty.getValue(time); // Can be undefined
           const dist = this.distance.getValue(time); // Can be undefined
-          const currentNitrate = this.nitrateProperty.getValue(time);
+          const currentConductivityLevel = this.conductivityProperty.getValue(time);
+          const currentTemperature = this.temperatureProperty.getValue(time);
+          const currentPressure = this.pressureProperty.getValue(time);
 
           let altitude: number | undefined = undefined;
           if (pos) {
@@ -506,11 +526,10 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
           }
 
           // *** UPDATE THE SHARED SERVICE ***
-          this.animationStateService.updateState(time, pos, vel, altitude, dist, currentNitrate);
+          this.animationStateService.updateState(time, pos, vel, altitude, dist, currentConductivityLevel, currentTemperature, currentPressure);
           // *********************************
-
           // Update model transform (only if pos and vel are valid)
-          if (pos && vel){
+          if (pos && vel.x && vel.y && vel.z){
             Cartesian3.normalize(vel, vel);
             Transforms.rotationMatrixFromPositionVelocity(
               pos,

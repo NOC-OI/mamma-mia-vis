@@ -19,4 +19,13 @@ export interface SensorsReadings {
   longitude: number,
   depth: number,
   nitrate?: number,
+  conductivity?: number,
+  temperature?: number,
+  pressure?: number,
+}
+
+export interface MetricsUnits {
+  conductivity: string,
+  temperature: string,
+  pressure: string,
 }

@@ -23,14 +23,14 @@ mat-slider {
    background-color: #f0f0f0;
    padding: 0.5rem;
    border: 1px solid #ddd;
-   height: 95vh;
+   height: 70vh;
 }
 
 .metrics-panel {
-  position: absolute;
-  top: 4rem;
-  right: 2rem;
+  position: relative;
+  top: 5px;
+  left: 9rem;
   z-index: 6; 
-  width: 20vw;
+  width: 85vw;
   min-width: 365px;
 }

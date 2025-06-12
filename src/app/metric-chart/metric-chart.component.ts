@@ -3,6 +3,8 @@ import Chart from 'chart.js/auto';
 import 'chartjs-adapter-date-fns';
 import { Subscription } from 'rxjs';
 import { AnimationStateService, AnimationFrameState } from '../services/animation-state.service'; // Adjust path
+import { CampaignService } from '../services/campaign.service';
+import { MetricsUnits } from '../services/campaign.interface';
 
 @Component({
   selector: 'app-metric-chart',
@@ -14,6 +16,9 @@ import { AnimationStateService, AnimationFrameState } from '../services/animatio
 })
 export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
   @ViewChild('metricCanvas') private metricCanvas!: ElementRef<HTMLCanvasElement>; // Use a unique ID/ref if needed
+  metricsUnits: MetricsUnits | null = null;
+  errorMessage: string | null = null;
+  
   private chart: Chart | undefined;
   private stateSubscription: Subscription | undefined;
 
@@ -22,16 +27,17 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
 
   constructor(
     private animationStateService: AnimationStateService,
+    private campaignService: CampaignService,
     private cdr: ChangeDetectorRef // Inject ChangeDetectorRef for OnPush
   ) { }
 
   ngOnInit(): void {
     // Subscription logic moved to ngAfterViewInit AFTER chart is created
+    this.getMetricsUnits()
   }
 
   ngAfterViewInit(): void {
-    this.createChart(); // Create the initial empty chart structure
-    this.subscribeToState(); // Subscribe AFTER chart is initialized
+
   }
 
   ngOnDestroy(): void {
@@ -39,6 +45,22 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
     this.stateSubscription?.unsubscribe();
     // Destroy the chart instance
     this.chart?.destroy();
+  }
+
+
+  getMetricsUnits() {
+    this.campaignService.getMetricsUnits().subscribe({
+      next: (data) => {
+        this.metricsUnits = data;
+        this.createChart(); // Create the initial empty chart structure
+        this.subscribeToState(); // Subscribe AFTER chart is initialized
+        this.errorMessage = null;
+      },
+      error: (error) => {
+        this.errorMessage = error.message;
+        console.error('Error fetching metrics units: ', error)
+      }
+    });
   }
 
   createChart(): void {
@@ -68,19 +90,36 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
           {
             label: 'Depth (m)', // Example second metric
             data: [],
-            borderColor: 'rgb(42,84,133)',
+            borderColor: 'rgb(102,204,255)',
             tension: 0.1,
             pointRadius: 2,
             yAxisID: 'yAltitude' // Assign to a secondary axis if scales differ greatly
           },
           { 
-            label: 'Nitrate (µmol/L)',
+            label: `Conductivity ( ${this.metricsUnits?.conductivity})`,
             data: [],
-            borderColor: 'rgb(255, 159, 64)', // Example Orange color
+            borderColor: 'rgb(255,159,64)', // Example Orange color
+            cubicInterpolationMode: 'monotone',
             tension: 0.1,
             pointRadius: 2,
-            yAxisID: 'yNitrate' // <-- Assign to a new Nitrate axis
-          }
+            yAxisID: 'yConductivity' // <-- Assign to a new Conductivity axis
+          },
+          { 
+            label: `Temperature (${this.metricsUnits?.temperature})`,
+            data: [],
+            borderColor: 'rgb(204,51,0)',
+            tension: 0.1,
+            pointRadius: 2,
+            yAxisID: 'yTemperature'
+          },
+          // {
+          //   label: `Pressure (${this.metricsUnits?.pressure})`,
+          //   data: [],
+          //   borderColor: 'rgb(0,51,102)',
+          //   tension: 0.1,
+          //   pointRadius: 2,
+          //   yAxisID: 'yPressure'
+          // }
         ]
       },
       options: {
@@ -94,7 +133,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
               unit: 'second', // Adjust time unit as needed
               tooltipFormat: 'yyyy-MM-dd HH:mm:ss',
               displayFormats: {
-                 second: 'HH:mm:ss'  
+                 second: 'HH:mm'  
               }
             },
             title: {
@@ -120,16 +159,31 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
                   drawOnChartArea: false, // Only draw grid for primary axis or adjust as needed
               },
           },
-          yNitrate: { // <-- ADD Axis for Nitrate
+          yConductivity: { // <-- ADD Axis for Conductivity
             type: 'linear',
             display: true,
             position: 'right', // Or 'left' if preferred
-            beginAtZero: false, // Adjust if nitrate can be negative or always starts at 0
-            title: { display: true, text: 'Nitrate (µmol/L)' }, // Adjust unit
+            beginAtZero: false, // Adjust if conductivity can be negative or always starts at 0
+            title: { display: true, text: `Cond. ( ${this.metricsUnits?.conductivity})` }, // Adjust unit
             grid: { drawOnChartArea: false }, // Don't draw grid lines
             // Offset this axis slightly if it overlaps with Altitude axis label
             // ticks: { padding: 10 } // Example padding
-          }
+          },
+          yTemperature: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: false,
+            title: { display: true, text: `Temp. (${this.metricsUnits?.temperature})` },
+            grid: { drawOnChartArea: false }
+          },
+          // yPressure: {
+          //   type: 'linear',
+          //   display: true,
+          //   position: 'right',
+          //   beginAtZero: false,
+          //   title: {display:true, text: `Pres. (${this.metricsUnits?.pressure})`}
+          // }
         },
         plugins: {
           legend: {
@@ -164,20 +218,27 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
     const labels = this.chart.data.labels as number[]; // Use number (timestamp) or Date
     // const speedData = this.chart.data.datasets[0].data as number[];
     const altitudeData = this.chart.data.datasets[0].data as number[];
-    const nitrateData = this.chart.data.datasets[1].data as number[];
+    const conductivityData = this.chart.data.datasets[1].data as number[];
+    const temperatureData = this.chart.data.datasets[2].data  as number[];
+    // const pressureData = this.chart.data.datasets[3].data as number[];
 
     // Add new data point
     labels.push(state.currentTime.getTime()); // Use timestamp for x-axis
     // speedData.push(state.speed ?? NaN); // Use NaN for missing data points
     altitudeData.push(state.altitude ?? NaN);
-    nitrateData.push(state.nitrate ?? NaN); 
+    conductivityData.push(state.conductivity ?? NaN); 
+    temperatureData.push(state.temperature ?? NaN);
+    // pressureData.push(state.pressure ?? NaN);
+    
 
     // Limit the number of data points shown
     if (labels.length > this.MAX_DATA_POINTS) {
       labels.shift(); // Remove oldest label
       // speedData.shift(); // Remove oldest speed data
       altitudeData.shift(); // Remove oldest altitude data
-      nitrateData.shift();
+      conductivityData.shift();
+      temperatureData.shift();
+      // pressureData.shift();
     }
 
     // Update the chart without animation for performance

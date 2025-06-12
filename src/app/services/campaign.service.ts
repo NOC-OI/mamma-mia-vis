@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
 import {catchError, retry} from 'rxjs/operators';
-import {MetricsData, TrajectoryData} from './campaign.interface';
+import {MetricsData, MetricsUnits, TrajectoryData} from './campaign.interface';
 
 
 @Injectable({
@@ -10,8 +10,9 @@ import {MetricsData, TrajectoryData} from './campaign.interface';
 })
 export class CampaignService {
 
-  private apiTrajectoryUrl = 'http://127.0.0.1:8040/zarr_trajectory?url=./assets/data_inputs/campaign_2.zarr&group=mission_1/trajectory';
-  private apiMetricsUrl = 'http://127.0.0.1:8040/zarr_metrics?url=./assets/data_inputs/campaign_2.zarr&trajectory_group=mission_1/trajectory&reality_group=mission_1/reality';
+  private apiTrajectoryUrl = 'http://127.0.0.1:8040/zarr_trajectory?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&group=RAD24_01/trajectory';
+  private apiMetricsUrl = 'http://127.0.0.1:8040/zarr_metrics?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&trajectory_group=RAD24_01/trajectory&reality_group=RAD24_01/payload';
+  private apiMetricsUnitsUrl = 'http://127.0.0.1:8040/zarr_metrics_units?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&attributes_group=RAD24_01/platform&sensor_name=SBE Glider Payload CTD 9099';
 
 
   constructor(private http: HttpClient) { }
@@ -30,6 +31,14 @@ export class CampaignService {
         retry(3),
         catchError(this.handleError)
       );
+  }
+
+  getMetricsUnits(): Observable<MetricsUnits> {
+    return this.http.get<MetricsUnits>(this.apiMetricsUnitsUrl)
+    .pipe(
+      retry(3),
+      catchError(this.handleError)
+    )
   }
 
   private handleError(error: any) {

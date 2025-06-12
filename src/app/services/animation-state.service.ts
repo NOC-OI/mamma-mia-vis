@@ -11,7 +11,9 @@ export interface AnimationFrameState {
   // Add any other metrics your chart might need (e.g., altitude, distance)
   altitude: number | null;
   distance: number | null;
-  nitrate: number | null;
+  conductivity: number | null;
+  temperature: number | null;
+  pressure: number | null;
 }
 
 @Injectable({
@@ -27,7 +29,9 @@ export class AnimationStateService {
     speed: null,
     altitude: null,
     distance: null,
-    nitrate: null,
+    conductivity: null,
+    temperature: null,
+    pressure: null,
   });
 
   // Expose the state as an Observable for components to subscribe to
@@ -42,7 +46,9 @@ export class AnimationStateService {
     velocity: Cartesian3 | undefined,
     altitude: number | undefined,
     distance: number | undefined,
-    nitrate: number| undefined,
+    conductivity: number| undefined,
+    temperature: number | undefined,
+    pressure: number | undefined
   ): void {
 
     const currentTime = position ? JulianDate.toDate(cesiumTime) : null;
@@ -57,7 +63,9 @@ export class AnimationStateService {
       speed,
       altitude: altitude ?? null, // Use nullish coalescing
       distance: distance ?? null,
-      nitrate: nitrate ?? null,
+      conductivity: conductivity ?? null,
+      temperature: temperature ?? null,
+      pressure: pressure ?? null,
     });
   }
 
