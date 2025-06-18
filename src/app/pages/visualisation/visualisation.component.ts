@@ -4,7 +4,7 @@ import {Cartesian3, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, G
   defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
   JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
   Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition,
-  Ellipsoid} from 'cesium';
+  Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
@@ -121,6 +121,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.viewer = new Viewer('cesiumContainer', {
       shadows: true,
       shouldAnimate: true,
+      geocoder: IonGeocodeProviderType.GOOGLE,
       terrainProvider: await createWorldBathymetryAsync({
         requestVertexNormals: true,
       }),
@@ -166,16 +167,34 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
     this.scene.camera.setView({
       destination: new Cartesian3(
-        -3877002.181627189,
-        5147948.256341475,
-        864384.3423478723,
+        -2710292.813384663,
+        -4360657.061518585,
+        3793571.786860543,
       ),
       orientation: new HeadingPitchRoll(
-        5.914830423853524,
-        -0.7139104486007932,
-        0.00017507632714419685,
+        5.794062761901799,
+        -0.30293409742984756,
+        0.0009187098191985044,
       ),
     });
+
+    // Enable rendering the sky
+    this.scene.skyAtmosphere.show = true;
+
+    this.addPhotorealistic3Dtiles(this.scene);
+  }
+
+  async addPhotorealistic3Dtiles(scene: Scene){
+    try {
+        const tileset = await createGooglePhotorealistic3DTileset({
+        // Only the Google Geocoder can be used with Google Photorealistic 3D Tiles.  Set the `geocode` property of the viewer constructor options to IonGeocodeProviderType.GOOGLE.
+        onlyUsingWithGoogleGeocoder: true,
+      });
+      scene.primitives.add(tileset);
+    } catch (error) {
+      console.log(`Error loading Photorealistic 3D Tiles tileset.
+        ${error}`);
+    }
   }
 
   processMetricsData(): void {
@@ -189,7 +208,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.pressureProperty = new SampledProperty(Number);
 
     try {
-        console.log('METRICS DATA to PROCESS: ', this.metricsData)
         for (const reading of this.metricsData.metrics) {
             if (typeof reading.conductivity === 'number' && !isNaN(reading.conductivity)) { // Check if Conductivity is a valid number
                 const time = JulianDate.fromDate(this.formatDateString(reading.datetime));
@@ -204,7 +222,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
               this.pressureProperty.addSample(time, reading.pressure);
             }
         }
-        console.log("Metrics data processed into SampledProperty.");
     } catch (error) {
         console.error("Error processing metrics data:", error);
     }
@@ -263,6 +280,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   updateExaggeration() {
     if(this.scene){
+      console.log('CURRENT vert EXAG: ', this.exaggeration);
       this.scene.verticalExaggeration = Number(this.exaggeration);
     }
   }
