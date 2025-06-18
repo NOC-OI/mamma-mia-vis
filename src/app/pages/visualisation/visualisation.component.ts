@@ -11,6 +11,7 @@ import {FormsModule} from '@angular/forms';
 import {MatFormFieldModule} from '@angular/material/form-field';  
 import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
+import {MatSelectModule} from '@angular/material/select';
 import {CampaignService} from '../../services/campaign.service';
 import {MetricsData, MetricsUnits, TrajectoryData} from '../../services/campaign.interface';
 import { AnimationStateService } from '../../services/animation-state.service';
@@ -20,7 +21,7 @@ import { MetricChartComponent } from "../../metric-chart/metric-chart.component"
 @Component({
   selector: 'app-visualisation',
   standalone: true,
-  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MetricChartComponent],
+  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MetricChartComponent, MatSelectModule],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
 })
@@ -54,6 +55,11 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   metricsData: MetricsData | null = null;
   metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
+
+  selectedMission = "";
+  selectedDeployment = ""
+  showDeploymentsList = false;
+
   private preUpdateListener: (() => void) | undefined;
 
   constructor(private campaignService: CampaignService, private animationStateService: AnimationStateService) { }
@@ -308,6 +314,10 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   enableInvertContourLines() {
     this.updateGlobeMaterial();
+  }
+
+  setShowDeploymentsListValue() { 
+    this.showDeploymentsList = this.selectedMission == "bioCarbon";
   }
 
   updateGlobeMaterialUniforms(zoomMagnitude: number): void {
