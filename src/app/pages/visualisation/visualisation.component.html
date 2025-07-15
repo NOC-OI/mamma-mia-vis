@@ -7,23 +7,21 @@
             <div class="actions-panel">
                 <mat-card>
                     <mat-card-content>
-                        <div class="row row-cols-1 mt-1">
+                        <div class="row row-cols-2 mt-1">
                             <div class="col">
                                 <mat-form-field>
                                     <mat-label class="missions-dropdown-box"><b>Missions</b></mat-label>
-                                    <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="setShowDeploymentsListValue()">
+                                    <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="startVisualisation()">
                                         <mat-option value="bioCarbon">BIO Carbon</mat-option>
                                         <mat-option value="rapidArray">RAPID Array virtual mooring</mat-option>
                                     </mat-select>
                                 </mat-form-field>
                             </div>
-                        </div>
-                        @if(showDeploymentsList){
-                            <div class="row row-cols-1 mt-1">
+                            @if(showDeploymentsList){
                                 <div class="col">
                                     <mat-form-field>
                                         <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
-                                        <mat-select matNativeControl required [(ngModel)]="selectedDeployment">
+                                        <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="startVisualisation()">
                                             <mat-option value="deployment646">Deployment 645</mat-option>
                                             <mat-option value="deployment646">Deployment 646</mat-option>
                                             <mat-option value="deployment648">Deployment 648</mat-option>
@@ -32,8 +30,9 @@
                                         </mat-select>
                                     </mat-form-field>
                                 </div>
-                            </div>
-                        }
+                            }
+                        </div>
+                        @if(selectedMission || selectedDeployment){
                         <div class="row row-cols-1 mt-1">
                             <div class="col">
                                 <mat-label><b>Elevation</b></mat-label>
@@ -46,6 +45,7 @@
                                 </div>
                             </div>
                         </div>
+                        }
                         <div class="row row-cols-1 mt-1">
                             <div class="col">
                                 <mat-label><b>Options</b></mat-label>
@@ -87,7 +87,7 @@
                 </mat-card>
             </div>
             <div class="metrics-panel">
-                <app-metric-chart></app-metric-chart>
+                <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart>
             </div>
         </div>
     </div>

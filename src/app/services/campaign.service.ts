@@ -3,6 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
 import {catchError, retry} from 'rxjs/operators';
 import {MetricsData, MetricsUnits, TrajectoryData} from './campaign.interface';
+import { ConfigService } from './config.service';
 
 
 @Injectable({
@@ -10,31 +11,91 @@ import {MetricsData, MetricsUnits, TrajectoryData} from './campaign.interface';
 })
 export class CampaignService {
 
-  private apiTrajectoryUrl = 'http://127.0.0.1:8040/zarr_trajectory?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&group=RAD24_01/trajectory';
-  private apiMetricsUrl = 'http://127.0.0.1:8040/zarr_metrics?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&trajectory_group=RAD24_01/trajectory&reality_group=RAD24_01/payload';
-  private apiMetricsUnitsUrl = 'http://127.0.0.1:8040/zarr_metrics_units?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&attributes_group=RAD24_01/platform&sensor_name=SBE Glider Payload CTD 9099';
+  private rootAPIUrl = "";
 
-
-  constructor(private http: HttpClient) { }
-
-  getVehicleTrajectory(): Observable<TrajectoryData> {
-    return this.http.get<TrajectoryData>(this.apiTrajectoryUrl)
-    .pipe(
-        retry(3), // Retry up to 3 times if the request fails
-        catchError(this.handleError) // Handle errors
-      );
+  constructor(private http: HttpClient, private configService: ConfigService) { 
+    this.rootAPIUrl = this.configService.config.rootAPIUrl.staging;
   }
 
-  getMetricsData(): Observable<MetricsData> {
-    return this.http.get<MetricsData>(this.apiMetricsUrl)
+  getVehicleTrajectory(selectedMission: string, selectedDeployment: string): Observable<TrajectoryData> {
+    let trajectoryDeploymentUrl = selectedMission == "bioCarbon" ? 
+                              "" : this.configService.config.relativeTrajectoryUrl.rapidArray;
+        
+    if(selectedDeployment){
+        switch(selectedDeployment){
+          case "deployment645": 
+            trajectoryDeploymentUrl = this.configService.config.relativeTrajectoryUrl.bioCarbon.deployment645;//TODO: Test with this syntaxt .biocarbon["deployment645"] to simplify code
+            break;
+          case "deployment646":
+            trajectoryDeploymentUrl = this.configService.config.relativeTrajectoryUrl.bioCarbon.deployment646;
+            break;
+          case "deployment648":
+            trajectoryDeploymentUrl = this.configService.config.relativeTrajectoryUrl.bioCarbon.deployment648;
+            break;
+          case "deployment649":
+            trajectoryDeploymentUrl = this.configService.config.relativeTrajectoryUrl.bioCarbon.deployment649;
+            break;
+          case "deployment650":
+            trajectoryDeploymentUrl = this.configService.config.relativeTrajectoryUrl.bioCarbon.deployment649;
+            break;
+        }
+    }
+
+  trajectoryDeploymentUrl = this.rootAPIUrl + trajectoryDeploymentUrl;
+  console.log(' URL: ', trajectoryDeploymentUrl);
+  return this.http.get<TrajectoryData>(trajectoryDeploymentUrl)
+  .pipe(
+      retry(3), // Retry up to 3 times if the request fails
+      catchError(this.handleError) // Handle errors
+    );
+  }
+
+  getMetricsData(selectedMission: string, selectedDeployment: string): Observable<MetricsData> {
+    let metricsDeploymentUrl = selectedMission == "bioCarbon" ? 
+                              "" : this.configService.config.relativeMetricsUrl.rapidArray;
+    if(selectedDeployment){
+        switch(selectedDeployment){
+          case "deployment645": 
+            metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment645;
+            break;
+          case "deployment646":
+            metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment646;
+            break;
+          case "deployment648":
+            metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment648;
+            break;
+          case "deployment649":
+            metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment649;
+            break;
+          case "deployment650":
+            metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment649;
+            break;
+        }
+    }
+    
+    metricsDeploymentUrl = this.rootAPIUrl + metricsDeploymentUrl;
+    return this.http.get<MetricsData>(metricsDeploymentUrl)
     .pipe(
         retry(3),
         catchError(this.handleError)
       );
   }
 
-  getMetricsUnits(): Observable<MetricsUnits> {
-    return this.http.get<MetricsUnits>(this.apiMetricsUnitsUrl)
+  getMetricsUnits(selectedMission: string): Observable<MetricsUnits> {
+    let relativeMetricsUnitsUrl = selectedMission == "bioCarbon" ? 
+                                  this.configService.config.relativeMetricsUnitsUrl.bioCarbon : 
+                                  this.configService.config.relativeMetricsUnitsUrl.rapidArray;
+    const apiMetricsUnitsUrl = this.rootAPIUrl + relativeMetricsUnitsUrl;
+    return this.http.get<MetricsUnits>(apiMetricsUnitsUrl)
+    .pipe(
+      retry(3),
+      catchError(this.handleError)
+    )
+  }
+
+  getMissionDeployments(): Observable<string[]>{
+    let apiMissionDeploymentsUrl = this.rootAPIUrl + this.configService.config.relativeMissionDeployments;
+    return this.http.get<string[]>(apiMissionDeploymentsUrl)
     .pipe(
       retry(3),
       catchError(this.handleError)

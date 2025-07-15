@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef, Input } from '@angular/core';
 import Chart from 'chart.js/auto';
 import 'chartjs-adapter-date-fns';
 import { Subscription } from 'rxjs';
@@ -16,6 +16,7 @@ import { MetricsUnits } from '../services/campaign.interface';
 })
 export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
   @ViewChild('metricCanvas') private metricCanvas!: ElementRef<HTMLCanvasElement>; // Use a unique ID/ref if needed
+  @Input() selectedMission = "";
   metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
   
@@ -33,7 +34,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
 
   ngOnInit(): void {
     // Subscription logic moved to ngAfterViewInit AFTER chart is created
-    this.getMetricsUnits()
+    this.getMetricsUnits();
   }
 
   ngAfterViewInit(): void {
@@ -41,6 +42,10 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
   }
 
   ngOnDestroy(): void {
+    this.cleanUpResources();
+  }
+
+  cleanUpResources(){
     // Unsubscribe to prevent memory leaks
     this.stateSubscription?.unsubscribe();
     // Destroy the chart instance
@@ -49,7 +54,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
 
 
   getMetricsUnits() {
-    this.campaignService.getMetricsUnits().subscribe({
+    this.campaignService.getMetricsUnits(this.selectedMission).subscribe({
       next: (data) => {
         this.metricsUnits = data;
         this.createChart(); // Create the initial empty chart structure
@@ -76,7 +81,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
     }
 
     this.chart = new Chart(ctx, {
-      type: 'line', // Example: line chart
+      type: 'line', // Line chart
       data: {
         labels: [], // Start with empty labels (will be timestamps)
         datasets: [
@@ -130,11 +135,14 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
           x: {
             type: 'time', // Use time scale
             time: {
-              unit: 'second', // Adjust time unit as needed
+              unit: 'minute', // Adjust time unit as needed
               tooltipFormat: 'yyyy-MM-dd HH:mm:ss',
               displayFormats: {
-                 second: 'HH:mm'  
+                 minute: 'HH:mm'  
               }
+            },
+            ticks: {
+              stepSize: 1
             },
             title: {
               display: true,

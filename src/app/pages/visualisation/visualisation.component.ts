@@ -4,7 +4,7 @@ import {Cartesian3, Ion, Viewer, createWorldBathymetryAsync, DirectionalLight, G
   defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
   JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
   Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition,
-  Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset} from 'cesium';
+  Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset, CesiumTerrainProvider} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule} from '@angular/forms';
@@ -66,8 +66,9 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
-    this.getVehicleTrajectory();
-    // this.getMetricsData();
+    if(this.selectedMission){
+      this.getMetricsData();
+    }
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -75,6 +76,10 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnDestroy(): void {
     // Clean up Cesium resources
+    this.cleanUpResources();
+  }
+
+  cleanUpResources(){
     if (this.viewer) {
       if (this.preUpdateListener) {
         this.viewer.scene.preUpdate.removeEventListener(this.preUpdateListener);
@@ -85,27 +90,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
-  getVehicleTrajectory(){
-    this.campaignService.getVehicleTrajectory().subscribe({
-      next: (data) => {
-        this.trajectoryData = data;
-        this.trajectoryData.trajectory.forEach(point => {
-          if (typeof point.datetime === 'number') { // Check if it's a number (milliseconds)
-              point.datetime = new Date(point.datetime).toISOString(); // Convert to ISO string.
-          }
-        });
-        this.errorMessage = null; // Clear any previous error messages
-        this.getMetricsData();
-      },
-      error: (error) => {
-        this.errorMessage = error.message;
-        console.error('Error fetching trajectory data:', error);
-      }
-    });
-  }
-
   getMetricsData() {
-    this.campaignService.getMetricsData().subscribe({
+    this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment).subscribe({
       next: (data) => {
         this.metricsData = data;
         this.metricsData.metrics.forEach(metricsReading => {
@@ -128,14 +114,15 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       shadows: true,
       shouldAnimate: true,
       geocoder: IonGeocodeProviderType.GOOGLE,
-      terrainProvider: await createWorldBathymetryAsync({
-        requestVertexNormals: true,
-      }),
+      // terrainProvider: await createWorldBathymetryAsync({
+      //   requestVertexNormals: true,
+      // }),
+      terrainProvider: await CesiumTerrainProvider.fromIonAssetId(2426648),
     });
 
     this.setModelRoute();
     this.processMetricsData();
-    this.addEventsToModel("cesium/static/models/slocum-glider-v1.glb");
+    this.addEventsToModel("cesium/static/models/autosub-long-range-v3.glb");
     this.addModelToView();
 
     this.viewer.baseLayerPicker.viewModel.selectedImagery =
@@ -239,28 +226,30 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   getColorRamp(): HTMLCanvasElement {
     const ramp = document.getElementById("colorRamp") as HTMLCanvasElement;
-    ramp.width = 170;
-    ramp.height = 20;
-    const ctx = ramp.getContext("2d");
-    if(ctx) {
-      const grd = ctx.createLinearGradient(0, 0, 170, 0);
+    if(ramp){
+      ramp.width = 170;
+      ramp.height = 20;
+      const ctx = ramp.getContext("2d");
+      if(ctx) {
+        const grd = ctx.createLinearGradient(0, 0, 170, 0);
 
-      const d = (height: number) => (height - this.minHeight) / (this.maxHeight - this.minHeight);
-      grd?.addColorStop(d(this.maxHeight), "#B79E6C");
-      grd?.addColorStop(d(100.0), "#FBFFEE");
-      grd?.addColorStop(d(0.0), "#F9FCCA");
-      grd?.addColorStop(d(-500.0), "#BDE7AD"); 
-      grd?.addColorStop(d(-1000.0), "#81D2A3");
-      grd?.addColorStop(d(-1500.0), "#5AB7A4");
-      grd?.addColorStop(d(-2000.0), "#4C9AA0");
-      grd?.addColorStop(d(-2500.0), "#437D9A");
-      grd?.addColorStop(d(-4000.0), "#3E6194");
-      grd?.addColorStop(d(-5000.0), "#424380");
-      grd?.addColorStop(d(-8000.0), "#392D52");
-      grd?.addColorStop(d(this.minHeight), "#291C2F");
-  
-      ctx.fillStyle = grd ? grd : new CanvasGradient();
-      ctx.fillRect(0, 0, ramp.width, ramp.height);
+        const d = (height: number) => (height - this.minHeight) / (this.maxHeight - this.minHeight);
+        grd?.addColorStop(d(this.maxHeight), "#B79E6C");
+        grd?.addColorStop(d(100.0), "#FBFFEE");
+        grd?.addColorStop(d(0.0), "#F9FCCA");
+        grd?.addColorStop(d(-500.0), "#BDE7AD"); 
+        grd?.addColorStop(d(-1000.0), "#81D2A3");
+        grd?.addColorStop(d(-1500.0), "#5AB7A4");
+        grd?.addColorStop(d(-2000.0), "#4C9AA0");
+        grd?.addColorStop(d(-2500.0), "#437D9A");
+        grd?.addColorStop(d(-4000.0), "#3E6194");
+        grd?.addColorStop(d(-5000.0), "#424380");
+        grd?.addColorStop(d(-8000.0), "#392D52");
+        grd?.addColorStop(d(this.minHeight), "#291C2F");
+    
+        ctx.fillStyle = grd ? grd : new CanvasGradient();
+        ctx.fillRect(0, 0, ramp.width, ramp.height);
+      }
     }
 
     return ramp;
@@ -316,8 +305,12 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.updateGlobeMaterial();
   }
 
-  setShowDeploymentsListValue() { 
+  startVisualisation() { 
     this.showDeploymentsList = this.selectedMission == "bioCarbon";
+    if(!this.showDeploymentsList || this.selectedDeployment){
+      this.cleanUpResources();
+      this.getMetricsData();
+    }
   }
 
   updateGlobeMaterialUniforms(zoomMagnitude: number): void {
@@ -426,9 +419,11 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   setModelRoute() {
-    if (this.viewer && this.trajectoryData && this.trajectoryData.trajectory && this.trajectoryData.trajectory.length > 0) { // Check if trajectoryData and trajectory exists and is not empty.
-      const firstDateTimeString = this.trajectoryData.trajectory[0].datetime;
-      const lastDateTimeString = this.trajectoryData.trajectory[this.trajectoryData.trajectory.length - 1].datetime;
+    if (this.viewer && this.metricsData && this.metricsData.metrics && this.metricsData.metrics.length > 0) { // Check if trajectoryData and trajectory exists and is not empty.
+      const firstDateTimeString = this.metricsData.metrics[0].datetime;
+      const lastDateTimeString = this.metricsData.metrics[this.metricsData.metrics.length - 1].datetime;
+      console.log(' firstDateTimeString', firstDateTimeString);
+      console.log(' lastDateTimeString: ', lastDateTimeString);
 
       try {
         const startDate = this.formatDateString(firstDateTimeString);
@@ -463,7 +458,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
         let prevLocation: Cartesian3 | undefined = undefined;
         let totalDistance = 0;
 
-        for (const point of this.trajectoryData.trajectory) {
+        for (const point of this.metricsData.metrics) {
           const timeString = point.datetime;
           const formattedTimeString = this.formatDateString(timeString); // Format the time string
           const time = JulianDate.fromDate(formattedTimeString); // Use the formatted string
