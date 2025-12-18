@@ -13,9 +13,11 @@ import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MatSelectModule} from '@angular/material/select';
 import {CampaignService} from '../../services/campaign.service';
-import {MetricsData, MetricsUnits, TrajectoryData} from '../../services/campaign.interface';
+import {MetricsPage, MetricsUnits, TrajectoryData} from '../../services/campaign.interface';
 import { AnimationStateService } from '../../services/animation-state.service';
 import { MetricChartComponent } from "../../metric-chart/metric-chart.component";
+import { Observable, Subscription, timer, of } from 'rxjs';
+import { concatMap, delay, expand, finalize, skip, takeWhile } from 'rxjs/operators';
 
 
 @Component({
@@ -52,13 +54,17 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   globe: Globe | undefined;
 
   trajectoryData: TrajectoryData | null = null;
-  metricsData: MetricsData | null = null;
+  RECORDS_PER_PAGE = 50
+  metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
   metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
 
   selectedMission = "";
   selectedDeployment = ""
   showDeploymentsList = false;
+  isLoading = false;
+  recordsPerPage = this.RECORDS_PER_PAGE;
+  private fetchSubscription: Subscription | null = null;
 
   private preUpdateListener: (() => void) | undefined;
 
@@ -67,7 +73,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
     if(this.selectedMission){
-      this.getMetricsData();
+      this.startSequentialMetricsFetch();
     }
   }
 
@@ -88,10 +94,15 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       this.viewer.destroy();
       this.viewer = undefined;
     }
+
+    if (this.fetchSubscription) {
+      this.fetchSubscription.unsubscribe();
+    }
   }
 
   getMetricsData() {
-    this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment).subscribe({
+
+    this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, 2, 115).subscribe({
       next: (data) => {
         this.metricsData = data;
         this.metricsData.metrics.forEach(metricsReading => {
@@ -100,7 +111,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
           }
         });
         this.errorMessage = null;
-        this.setGlobalScene();
+        this.addSensorReadingsToTimeSeries();
       },
       error: (error) => {
         this.errorMessage = error.message;
@@ -199,7 +210,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.conductivityProperty = new SampledProperty(Number); // Reinitialize
     this.temperatureProperty = new SampledProperty(Number);
     this.pressureProperty = new SampledProperty(Number);
-
     try {
         for (const reading of this.metricsData.metrics) {
             if (typeof reading.conductivity === 'number' && !isNaN(reading.conductivity)) { // Check if Conductivity is a valid number
@@ -275,7 +285,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   updateExaggeration() {
     if(this.scene){
-      console.log('CURRENT vert EXAG: ', this.exaggeration);
       this.scene.verticalExaggeration = Number(this.exaggeration);
     }
   }
@@ -309,7 +318,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.showDeploymentsList = this.selectedMission == "bioCarbon";
     if(!this.showDeploymentsList || this.selectedDeployment){
       this.cleanUpResources();
-      this.getMetricsData();
+      // this.getMetricsData();
+      this.startSequentialMetricsFetch();
     }
   }
 
@@ -422,8 +432,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.viewer && this.metricsData && this.metricsData.metrics && this.metricsData.metrics.length > 0) { // Check if trajectoryData and trajectory exists and is not empty.
       const firstDateTimeString = this.metricsData.metrics[0].datetime;
       const lastDateTimeString = this.metricsData.metrics[this.metricsData.metrics.length - 1].datetime;
-      console.log(' firstDateTimeString', firstDateTimeString);
-      console.log(' lastDateTimeString: ', lastDateTimeString);
 
       try {
         const startDate = this.formatDateString(firstDateTimeString);
@@ -503,6 +511,125 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     
   }
 
+  /**
+   * Initializes and manages the sequential fetching of paginated data.
+   */
+    startSequentialMetricsFetch(): void {
+      console.log("Enter to new METHODS!")
+      this.isLoading = true;
+      this.metricsData = { metrics: [], totalRecords: Infinity, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
+
+      let currentPage = 0; 
+      let totalRecords = Infinity;
+
+      // Step 1: Create an Observable stream that handles the loop.
+      const fetchPage$ = of(null).pipe(
+        expand((page: MetricsPage | null) => {
+          // Stop condition check
+          if (page && this.metricsData.metrics.length >= totalRecords) {
+            console.log(' STOPPING! All records fetched.');
+            return of(); 
+          }
+
+          if (page) {
+              currentPage++; 
+          }
+
+          console.log('Fetching Page:', currentPage);
+          
+          return this.campaignService.getMetricsData(
+            this.selectedMission,
+            this.selectedDeployment,
+            currentPage,
+            this.recordsPerPage
+          ).pipe(
+            delay(50) 
+          );
+        }),
+        
+        // We skip the initial seed value 'of(null)'
+        skip(1)
+        
+      // *** FIX: Explicitly cast the final Observable type ***
+      ) as Observable<MetricsPage>;
+      
+      // Step 2: Subscribe to the main Observable to process the data
+      // The type of 'page' is now definitively known as 'MetricsPage'
+      this.fetchSubscription = fetchPage$.subscribe({
+        next: (page: MetricsPage) => { // This line is now safe
+          // Update the total records after the first successful call
+          if (totalRecords === Infinity) {
+            totalRecords = page.totalRecords;
+          }
+
+          // Process and append the data from the current page
+          this.appendAndProcessMetrics(page);
+          
+        },
+        error: (error) => {
+          this.errorMessage = error.message;
+          console.error('Error fetching metrics data:', error);
+          this.isLoading = false;
+        },
+        complete: () => {
+          console.log('All metrics data fetched and processed.');
+          this.isLoading = false;
+        }
+      });
+  }
+
+
+  
+  /**
+   * Processes the data from a single page and appends it to the main store.
+   * @param page The metrics data page received from the API.
+   */
+  private appendAndProcessMetrics(page: MetricsPage): void {
+
+
+    if(page.metrics){
+      // 1. Append the new data
+      this.metricsData.metrics = page.metrics;
+      console.log(' METRICS DATA!: ', page.metrics)
+      // 2. Apply your existing data processing logic
+      page.metrics.forEach(metricsReading => {
+        if (typeof metricsReading.datetime === 'number') {
+            metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
+        }
+      });
+
+      // 3. Run processing for the newly added data
+      // this.processMetricsData();
+      this.addSensorReadingsToTimeSeries();
+      
+      console.log(`Fetched page ${page.currentPage}. Total records: ${this.metricsData.metrics.length}`);
+    }
+
+  }
+
+  addSensorReadingsToTimeSeries(){
+    let times: String[] = [];
+    let conductivityLevels: number[] = [];
+    let temperatures: number[] = [];
+    let pressures: number[] = [];
+    if(this.metricsData){
+      this.metricsData.metrics.forEach( sensorReading => {
+        times.push(sensorReading.datetime);
+
+        conductivityLevels.push(sensorReading.conductivity ? sensorReading.conductivity : NaN);
+        
+        
+        temperatures.push(sensorReading.temperature? sensorReading.temperature : NaN);
+        
+        
+        pressures.push(sensorReading.pressure ? sensorReading.pressure : NaN);
+        
+      });
+      this.animationStateService.updateState(times, conductivityLevels, temperatures, pressures);
+    }
+
+  }
+
   async addEventsToModel(modelUrl: string) {
     if(this.viewer){
       try {
@@ -549,7 +676,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
           }
 
           // *** UPDATE THE SHARED SERVICE ***
-          this.animationStateService.updateState(time, pos, vel, altitude, dist, currentConductivityLevel, currentTemperature, currentPressure);
+          // this.animationStateService.updateState(time, pos, vel, altitude, dist, currentConductivityLevel, currentTemperature, currentPressure);
           // *********************************
           // Update model transform (only if pos and vel are valid)
           if (pos && vel.x && vel.y && vel.z){

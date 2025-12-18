@@ -9,8 +9,11 @@ export interface StepData {
   depth: number
 }
 
-export interface MetricsData {
-  metrics: SensorsReadings[]
+export interface MetricsPage {
+  totalRecords: number;
+  currentPage: number;
+  recordsPerPage: number;
+  metrics: SensorsReadings[];
 }
 
 export interface SensorsReadings {

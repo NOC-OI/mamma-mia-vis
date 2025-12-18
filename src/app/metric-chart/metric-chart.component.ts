@@ -22,6 +22,10 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
   
   private chart: Chart | undefined;
   private stateSubscription: Subscription | undefined;
+  private labels: String[] = [];
+  private conductivityData: number[] = [];
+  private temperatureData: number[] = [];
+
 
   // Chart configuration options
   private readonly MAX_DATA_POINTS = 60; // Limit history length
@@ -69,6 +73,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
   }
 
   createChart(): void {
+    let delayed = false;
     if (!this.metricCanvas) {
       console.error("Canvas element 'metricCanvas' not found.");
       return;
@@ -83,7 +88,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
     this.chart = new Chart(ctx, {
       type: 'line', // Line chart
       data: {
-        labels: [], // Start with empty labels (will be timestamps)
+        labels: this.labels, // Start with empty labels (will be timestamps)
         datasets: [
           // {
           //   label: 'Speed (m/s)', // Example metric
@@ -92,18 +97,18 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
           //   tension: 0.1, // Smooth lines
           //   pointRadius: 2,
           // },
-          {
-            label: 'Depth (m)', // Example second metric
-            data: [],
-            borderColor: 'rgb(102,204,255)',
-            tension: 0.1,
-            pointRadius: 2,
-            yAxisID: 'yAltitude' // Assign to a secondary axis if scales differ greatly
-          },
+          // {
+          //   label: 'Depth (m)', // Example second metric
+          //   data: [],
+          //   borderColor: 'rgb(102,204,255)',
+          //   tension: 0.1,
+          //   pointRadius: 2,
+          //   yAxisID: 'yAltitude' // Assign to a secondary axis if scales differ greatly
+          // },
           { 
             label: `Conductivity ( ${this.metricsUnits?.conductivity})`,
-            data: [],
-            borderColor: 'rgb(255,159,64)', // Example Orange color
+            data: this.conductivityData,
+            borderColor: 'rgba(83, 64, 255, 1)', // Example Orange color
             cubicInterpolationMode: 'monotone',
             tension: 0.1,
             pointRadius: 2,
@@ -111,7 +116,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
           },
           { 
             label: `Temperature (${this.metricsUnits?.temperature})`,
-            data: [],
+            data: this.temperatureData,
             borderColor: 'rgb(204,51,0)',
             tension: 0.1,
             pointRadius: 2,
@@ -119,7 +124,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
           },
           // {
           //   label: `Pressure (${this.metricsUnits?.pressure})`,
-          //   data: [],
+          //   data: this.pressureData,
           //   borderColor: 'rgb(0,51,102)',
           //   tension: 0.1,
           //   pointRadius: 2,
@@ -128,17 +133,17 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
         ]
       },
       options: {
-        animation: false, // Disable default Chart.js animation for smoother updates
+        animation: false, 
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           x: {
             type: 'time', // Use time scale
             time: {
-              unit: 'minute', // Adjust time unit as needed
+              unit: 'second', // Adjust time unit as needed
               tooltipFormat: 'yyyy-MM-dd HH:mm:ss',
               displayFormats: {
-                 minute: 'HH:mm'  
+                 minute: 'HH:mm:ss'  
               }
             },
             ticks: {
@@ -156,23 +161,23 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
           //     text: 'Speed (m/s)'
           //   }
           // },
-          yAltitude: { // Secondary Y-axis (for Depth)
-              position: 'right', // Position on the right
-              beginAtZero: false, // Altitude might not start at 0
-              title: {
-                  display: true,
-                  text: 'Depth (m)'
-              },
-              grid: {
-                  drawOnChartArea: false, // Only draw grid for primary axis or adjust as needed
-              },
-          },
+          // yAltitude: { // Secondary Y-axis (for Depth)
+          //     position: 'right', // Position on the right
+          //     beginAtZero: false, // Altitude might not start at 0
+          //     title: {
+          //         display: true,
+          //         text: 'Depth (m)'
+          //     },
+          //     grid: {
+          //         drawOnChartArea: false, // Only draw grid for primary axis or adjust as needed
+          //     },
+          // },
           yConductivity: { // <-- ADD Axis for Conductivity
             type: 'linear',
             display: true,
-            position: 'right', // Or 'left' if preferred
+            position: 'left', // Or 'left' if preferred
             beginAtZero: false, // Adjust if conductivity can be negative or always starts at 0
-            title: { display: true, text: `Cond. ( ${this.metricsUnits?.conductivity})` }, // Adjust unit
+            title: { display: true, text: `Conductivity ( ${this.metricsUnits?.conductivity})` }, // Adjust unit
             grid: { drawOnChartArea: false }, // Don't draw grid lines
             // Offset this axis slightly if it overlaps with Altitude axis label
             // ticks: { padding: 10 } // Example padding
@@ -182,7 +187,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
             display: true,
             position: 'right',
             beginAtZero: false,
-            title: { display: true, text: `Temp. (${this.metricsUnits?.temperature})` },
+            title: { display: true, text: `Temperature (${this.metricsUnits?.temperature})` },
             grid: { drawOnChartArea: false }
           },
           // yPressure: {
@@ -212,42 +217,52 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
       // Optional: Add throttling if updates are too frequent
       // .pipe(throttleTime(100, asyncScheduler, { leading: true, trailing: true }))
       .subscribe((state: AnimationFrameState) => {
-        if (this.chart && state.currentTime) { // Ensure chart exists and we have a valid time
+        if (this.chart && state.times) { // Ensure chart exists and we have a valid time
           this.updateChartData(state);
         }
       });
   }
 
   updateChartData(state: AnimationFrameState): void {
-    if (!this.chart || !this.chart.data.labels || !this.chart.data.datasets || !state.currentTime) {
+    if (!this.chart || !this.chart.data.labels || !this.chart.data.datasets || !state.times) {
       return; // Safety check
     }
 
-    const labels = this.chart.data.labels as number[]; // Use number (timestamp) or Date
-    // const speedData = this.chart.data.datasets[0].data as number[];
-    const altitudeData = this.chart.data.datasets[0].data as number[];
-    const conductivityData = this.chart.data.datasets[1].data as number[];
-    const temperatureData = this.chart.data.datasets[2].data  as number[];
-    // const pressureData = this.chart.data.datasets[3].data as number[];
-
+    this.labels = this.chart.data.labels as String[]; // Use number (timestamp) or Date
+    this.conductivityData = this.chart.data.datasets[0].data as number[];
+    this.temperatureData = this.chart.data.datasets[1].data  as number[];
+ 
     // Add new data point
-    labels.push(state.currentTime.getTime()); // Use timestamp for x-axis
-    // speedData.push(state.speed ?? NaN); // Use NaN for missing data points
-    altitudeData.push(state.altitude ?? NaN);
-    conductivityData.push(state.conductivity ?? NaN); 
-    temperatureData.push(state.temperature ?? NaN);
-    // pressureData.push(state.pressure ?? NaN);
+    // labels.push(state.times.getTime()); // Use timestamp for x-axis
+    // // speedData.push(state.speed ?? NaN); // Use NaN for missing data points
+    // altitudeData.push(state.altitude ?? NaN);
+    // conductivityData.push(state.conductivityLevels ?? NaN); 
+    // temperatureData.push(state.temperatures ?? NaN);
+    // // pressureData.push(state.pressure ?? NaN);
+    this.chart.data.labels = this.labels.concat(state.times);
+    // labels = labels.slice(0, 10);
+    if(state.conductivityLevels){
+      this.chart.data.datasets[0].data = this.conductivityData.concat(state.conductivityLevels);
+    }
+    if(state.temperatures){
+      this.chart.data.datasets[1].data = this.temperatureData.concat(state.temperatures);
+      // temperatureData = temperatureData.slice(0, 10);
+    }
+    if(state.pressures){
+      // pressureData = this.pressureData.concat(state.pressures);
+      // console.log(' Pressure data: ', this.pressureData);
+    }
     
 
     // Limit the number of data points shown
-    if (labels.length > this.MAX_DATA_POINTS) {
-      labels.shift(); // Remove oldest label
-      // speedData.shift(); // Remove oldest speed data
-      altitudeData.shift(); // Remove oldest altitude data
-      conductivityData.shift();
-      temperatureData.shift();
-      // pressureData.shift();
-    }
+    // if (labels.length > this.MAX_DATA_POINTS) {
+    //   labels.shift(); // Remove oldest label
+    //   // speedData.shift(); // Remove oldest speed data
+    //   // altitudeData.shift(); // Remove oldest altitude data
+    //   conductivityData.shift();
+    //   temperatureData.shift();
+    //   // this.pressureData.shift();
+    // }
 
     // Update the chart without animation for performance
     this.chart.update('none');

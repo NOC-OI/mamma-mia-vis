@@ -2,8 +2,8 @@
 <div class="container-fluid container-stack">
     <div class="row">
         <div class="col-12">
-            <div  id="cesiumContainer" class="simulation-panel">
-            </div>
+            <!-- <div  id="cesiumContainer" class="simulation-panel">
+            </div> -->
             <div class="actions-panel">
                 <mat-card>
                     <mat-card-content>
@@ -18,76 +18,27 @@
                                 </mat-form-field>
                             </div>
                             @if(showDeploymentsList){
-                                <div class="col">
-                                    <mat-form-field>
-                                        <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
-                                        <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="startVisualisation()">
-                                            <mat-option value="deployment646">Deployment 645</mat-option>
-                                            <mat-option value="deployment646">Deployment 646</mat-option>
-                                            <mat-option value="deployment648">Deployment 648</mat-option>
-                                            <mat-option value="deployment649">Deployment 649</mat-option>
-                                            <mat-option value="deployment650">Deployment 650</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
+                            <div class="col">
+                                <mat-form-field>
+                                    <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
+                                    <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="startVisualisation()">
+                                        <mat-option value="deployment646">Deployment 645</mat-option>
+                                        <mat-option value="deployment646">Deployment 646</mat-option>
+                                        <mat-option value="deployment648">Deployment 648</mat-option>
+                                        <mat-option value="deployment649">Deployment 649</mat-option>
+                                        <mat-option value="deployment650">Deployment 650</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                            </div>
                             }
                         </div>
-                        @if(selectedMission || selectedDeployment){
-                        <div class="row row-cols-1 mt-1">
-                            <div class="col">
-                                <mat-label><b>Elevation</b></mat-label>
-                            </div>
-                            <div class="col" id="colorRampPanel">
-                                <div class="d-flex flex-row justify-content-between">
-                                    <div class="p-1"><mat-label for="colorRamp">-10000m</mat-label></div>
-                                    <div class="p-1"><canvas id="colorRamp"></canvas></div>
-                                    <div class="p-1"> <mat-label >2000m</mat-label></div>
-                                </div>
-                            </div>
-                        </div>
-                        }
-                        <div class="row row-cols-1 mt-1">
-                            <div class="col">
-                                <mat-label><b>Options</b></mat-label>
-                            </div>
-                            <div class="col mt-1">
-                                <div class="d-flex flex-row align-items-center">
-                                    <div class="p-1">
-                                        <mat-label>Exaggeration</mat-label>
-                                    </div>
-                                    <div class="p-1">
-                                        <mat-slider id="exaggerationSlider" min="1" max="5" step="1" discrete="true">
-                                            <input matSliderThumb value="1" [(ngModel)]="exaggeration" (ngModelChange)="valueChanged()">
-                                        </mat-slider>
-                                    </div>
-                                    <div class="p-1">
-                                        <input matInput type="text" size="3" [(ngModel)]="exaggeration" (ngModelChange)="valueChanged()"/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row row-cols-1">
-                            <div class="col">
-                                <mat-checkbox [(ngModel)]="enableLighting" (ngModelChange)="activateLighting()">Enable ligthing</mat-checkbox>
-                            </div>
-                            <div class="col">
-                                <mat-checkbox [(ngModel)]="enableFog" (ngModelChange)="activateFog()">Fog enable</mat-checkbox>
-                            </div>
-                            <div class="col">
-                                <mat-checkbox [(ngModel)]="showElevationColorRamp" (ngModelChange)="activateColourRamp()">Colour ramp enabled</mat-checkbox>
-                            </div>
-                            <div class="col">
-                                <mat-checkbox [(ngModel)]="showContourLines" (ngModelChange)="enableContourLines()">Contour lines enabled</mat-checkbox>
-                            </div>
-                            <div class="col">
-                                <!-- <mat-checkbox [(ngModel)]="invertContourLines" (ngModelChange)="enableInvertContourLines()">Invert contour line colour</mat-checkbox> -->
-                            </div>
+                        <div class="row mt-1 metrics-panel">
+                            <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart>
                         </div>
                     </mat-card-content>
                 </mat-card>
             </div>
             <div class="metrics-panel">
-                <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart>
             </div>
         </div>
     </div>

@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
 import {catchError, retry} from 'rxjs/operators';
-import {MetricsData, MetricsUnits, TrajectoryData} from './campaign.interface';
+import {MetricsPage, MetricsUnits, TrajectoryData} from './campaign.interface';
 import { ConfigService } from './config.service';
 
 
@@ -50,7 +50,7 @@ export class CampaignService {
     );
   }
 
-  getMetricsData(selectedMission: string, selectedDeployment: string): Observable<MetricsData> {
+  getMetricsData(selectedMission: string, selectedDeployment: string, page: number, recordsPerPage: number): Observable<MetricsPage> {
     let metricsDeploymentUrl = selectedMission == "bioCarbon" ? 
                               "" : this.configService.config.relativeMetricsUrl.rapidArray;
     if(selectedDeployment){
@@ -73,8 +73,8 @@ export class CampaignService {
         }
     }
     
-    metricsDeploymentUrl = this.rootAPIUrl + metricsDeploymentUrl;
-    return this.http.get<MetricsData>(metricsDeploymentUrl)
+    metricsDeploymentUrl = `${this.rootAPIUrl}${metricsDeploymentUrl}&page=${page}&records_per_page=${recordsPerPage}`;
+    return this.http.get<MetricsPage>(metricsDeploymentUrl)
     .pipe(
         retry(3),
         catchError(this.handleError)
