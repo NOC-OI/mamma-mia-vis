@@ -15,15 +15,16 @@ import {MatSelectModule} from '@angular/material/select';
 import {CampaignService} from '../../services/campaign.service';
 import {MetricsPage, MetricsUnits, TrajectoryData} from '../../services/campaign.interface';
 import { AnimationStateService } from '../../services/animation-state.service';
-import { MetricChartComponent } from "../../metric-chart/metric-chart.component";
+import { BarChartComponent } from '../../graphs/bar-chart/bar-chart.component';
 import { Observable, Subscription, timer, of } from 'rxjs';
-import { concatMap, delay, expand, finalize, skip, takeWhile } from 'rxjs/operators';
+import { delay, expand, skip } from 'rxjs/operators';
+import { LineChartComponent } from "../../graphs/line-chart/line-chart.component";
 
 
 @Component({
   selector: 'app-visualisation',
   standalone: true,
-  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MetricChartComponent, MatSelectModule],
+  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MatSelectModule, BarChartComponent, LineChartComponent],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
 })
@@ -319,7 +320,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     if(!this.showDeploymentsList || this.selectedDeployment){
       this.cleanUpResources();
       // this.getMetricsData();
-      this.startSequentialMetricsFetch();
+      // this.startSequentialMetricsFetch();
     }
   }
 
