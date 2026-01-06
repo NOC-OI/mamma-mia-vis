@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, ViewChild, ElementRef, OnChanges, SimpleChanges } from '@angular/core';
 import * as d3 from 'd3';
-import { MetricsUnits, MetricsPage } from '../../services/campaign.interface';
+import { MetricsUnits, MetricsPage, SensorsReadings, SeriesPoint } from '../../services/campaign.interface';
 import { CampaignService } from '../../services/campaign.service';
 
 @Component({
@@ -11,12 +11,16 @@ import { CampaignService } from '../../services/campaign.service';
   styleUrl: './line-chart.component.scss'
 })
 export class LineChartComponent implements OnInit, OnChanges{
-  @ViewChild('chartContainer', { static: true }) chartContainer!: ElementRef;
   @Input() selectedMission = "";
-  metricsUnits: MetricsUnits | null = null;
+  metricsUnits: MetricsUnits = {
+    temperature: '°C',
+    pressure: 'bar',
+    conductivity: 'mS/cm'
+  };
+
   errorMessage: string | null = null;
   PAGE_NUMBER = 1;
-  RECORDS_PER_PAGE = 400;
+  RECORDS_PER_PAGE = 1000;
   metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
   selectedDeployment = ""
   voronoi = false;
@@ -60,7 +64,6 @@ export class LineChartComponent implements OnInit, OnChanges{
           }
         });
         this.errorMessage = null;
-        // this.addSensorReadingsToTimeSeries();
         this.createChart();
       },
       error: (error) => {
@@ -72,30 +75,44 @@ export class LineChartComponent implements OnInit, OnChanges{
   }
   
   private createChart(): void {
-    // 1. Clear previous chart
-    // const container = this.chartContainer.nativeElement;
-    // d3.select(container).selectAll('*').remove();
-
-    // 2. Dimensions
     const width = 928;
-    const height = 600;
+    const height = 550;
     const margin = { top: 20, right: 20, bottom: 30, left: 30 };
 
-    // 3. Fix the "Iterable" error with type assertion/guards
+    // 1. Transform Data: Flatten multiple properties into individual series points
+    // const metrics = ['temperature', 'pressure', 'conductivity'];
+    const metrics = Object.keys(this.metricsUnits) as Array<keyof MetricsUnits>;
+    const formattedData: SeriesPoint[] = [];
+    
+    this.metricsData.metrics.forEach(d => {
+      const date = new Date(d.datetime);
+      metrics.forEach(metric => {
+        const val = d[metric as keyof SensorsReadings];
+        if (typeof val === 'number') {
+          formattedData.push({ date, value: val, metric });
+        }
+      });
+    });
+
+    // 2. Scales
     const xExtent = d3.extent(this.metricsData.metrics, d => new Date(d.datetime));
     if (!xExtent[0] || !xExtent[1]) return; 
 
     const x = d3.scaleTime()
-      .domain(xExtent as [Date, Date]) // Cast after guard
+      .domain(xExtent as [Date, Date])
       .range([margin.left, width - margin.right]);
 
-    const yMax = d3.max(this.metricsData.metrics, d => d.depth) ?? 0;
+    // Y scale must now cover the min/max of ALL metrics combined
+    const yExtent = d3.extent(formattedData, d => d.value);
     const y = d3.scaleLinear()
-      .domain([0, yMax]).nice()
+      .domain([yExtent[0] ?? 0, yExtent[1] ?? 0]).nice()
       .range([height - margin.bottom, margin.top]);
+    
+    // Color scale for different lines
+    const color = d3.scaleOrdinal(d3.schemeCategory10)
+      .domain(metrics);
 
-    // 4. SVG Container
-    //   const svg = d3.select(container).append('svg')
+    // 3. SVG Container
 
     const svg = d3.select("app-line-chart").append('svg')
       .attr("width", width)
@@ -103,62 +120,87 @@ export class LineChartComponent implements OnInit, OnChanges{
       .attr("viewBox", [0, 0, width, height])
       .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;");
 
-    // 5. Axes
+    // 4. Axes
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(width / 100).tickSizeOuter(0).tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any));
+      .call(d3.axisBottom(x).ticks(d3.timeMinute).tickSizeOuter(0)
+      .tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
+      .selectAll("text")
+      // .style("font-size", "9px")
+      .style("fill", "#666")
+      .style("text-anchor", "end")
+      .attr("dx", "-.8em")  // Horizontal offset
+      .attr("dy", ".15em")  // Vertical offset
+      .attr("transform", "rotate(-35)"); // Rotate 45 degrees counter-clockwise
 
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y))
       .call(g => g.select(".domain").remove())
-      .call(this.voronoi ? () => {} : g => g.selectAll(".tick line").clone()
+      .call(g => g.selectAll(".tick line").clone()
+      // .call(this.voronoi ? () => {} : g => g.selectAll(".tick line").clone()
         .attr("x2", width - margin.left - margin.right)
-        .attr("stroke-opacity", 0.1));
+        .attr("stroke-opacity", 0.1))
+      .call(g => g.select(".tick:last-of-type text").clone()
+        .attr("x", 3)
+        .attr("text-anchor", "start")
+        .attr("font-weight", "bold")
+        .text("Depth (m)")
+    )
 
-    // 6. Data Points ([x, y, label])
-    // Assuming we group by 'latitude' or another field as the "series"
-    const points: [number, number, string][] = this.metricsData.metrics.map(d => [
-      x(new Date(d.datetime))!,
-      y(d.depth)!,
-      `${this.roundTo2Decimals(d.temperature)} ${this.metricsUnits?.temperature}` // Using temperature as the series identifier
-    ]);
+    // 5. Group data by metric for line generation
+    const groups = d3.group(formattedData, d => d.metric);
 
-    // 7. Grouping
-    const groups = d3.rollup(points, v => Object.assign(v, { z: v[0][2] }), d => d[2]);
+    const line = d3.line<SeriesPoint>()
+      .x(d => x(d.date)!)
+      .y(d => y(d.value)!);
 
-    // 8. Drawing Lines
-    const line = d3.line<[number, number, string]>()
-      .x(d => d[0])
-      .y(d => d[1]);
-
+    // 6. Draw Lines
     const path = svg.append("g")
       .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 1.5)
+      .attr("stroke-width", 2)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round")
       .selectAll("path")
-      .data(groups.values())
+      .data(groups)
       .join("path")
-      .attr("d", d => line(d as any)) // Explicit cast for d3.line
+      .attr("stroke", ([metric]) => color(metric))
+      .attr("d", ([_, values]) => line(values))
       .style("mix-blend-mode", "multiply");
 
-    // 9. Interactivity (The "Dot")
+    // 7. Interactivity (The "Dot")
     const dot = svg.append("g").attr("display", "none");
     dot.append("circle").attr("r", 2.5);
-    dot.append("text").attr("text-anchor", "middle").attr("y", -8);
+
+    // Use 'dy' to give the text some breathing room above the point
+    const dotLabel = dot.append("text")
+      .attr("text-anchor", "middle")
+      .attr("y", -10)
+      .style("font-weight", "bold");
 
     // Event Handlers
     const pointermoved = (event: any) => {
       const [xm, ym] = d3.pointer(event);
-      const i = d3.leastIndex(points, ([px, py]) => Math.hypot(px - xm, py - ym));
+      // Find the single closest point among all series
+      const i = d3.leastIndex(formattedData, d => Math.hypot(x(d.date)! - xm, y(d.value)! - ym));
       if (i === undefined) return;
 
-      const [px, py, k] = points[i];
-      path.style("stroke", (d: any) => d.z === k ? null : "#ddd")
-          .filter((d: any) => d.z === k).raise();
+      const d = formattedData[i];
+      // Look up the unit using the metric key typed via MetricsUnits
+      const unit = this.metricsUnits[d.metric as keyof MetricsUnits];
+
+      // Update highlight: Fade others, emphasize current metric line
+      path.style("stroke", ([metric]) => metric === d.metric ? color(metric) : "#ddd")
+          .attr("stroke-width", ([metric]) => metric === d.metric ? 3 : 1)
+          .filter(([metric]) => metric === d.metric).raise();
       
-      dot.attr("transform", `translate(${px},${py})`);
-      dot.select("text").text(k);
+      dot.attr("transform", `translate(${x(d.date)},${y(d.value)})`);
+      // dot.select("text").text(`${d.metric}: ${d.value.toFixed(2)}`);
+      dot.select("circle").attr("stroke", color(d.metric));
+      
+      // UPDATED: Displays "Value Unit" (e.g., 1013.25 bar)
+      dotLabel.text(`${d.value.toFixed(2)} ${unit}`);
+      dot.attr("display", null);
     };
 
     svg

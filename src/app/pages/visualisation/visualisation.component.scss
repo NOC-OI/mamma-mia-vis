@@ -16,7 +16,11 @@ mat-slider {
   left: 2rem;
   z-index: 2; 
   width: 87vw;
-  min-width: 365px;
+  min-width: 365px
+}
+
+.card-content-body {
+  height: 700px;
 }
 
 .simulation-panel {
@@ -30,9 +34,13 @@ mat-slider {
   position: relative;
   top: 5px;
   left: 1rem;
+  margin-right: 25px;
   z-index: 6; 
-  width: 85vw;
-  min-width: 365px;
+  background-color: white;
+}
+
+.time-series-graph {
+  padding-bottom: 30px;
 }
 
 .missions-dropdown-box {

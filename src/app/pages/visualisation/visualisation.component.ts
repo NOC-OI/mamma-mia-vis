@@ -19,12 +19,12 @@ import { BarChartComponent } from '../../graphs/bar-chart/bar-chart.component';
 import { Observable, Subscription, timer, of } from 'rxjs';
 import { delay, expand, skip } from 'rxjs/operators';
 import { LineChartComponent } from "../../graphs/line-chart/line-chart.component";
-
+import { MetricChartComponent } from '../../metric-chart/metric-chart.component';
 
 @Component({
   selector: 'app-visualisation',
   standalone: true,
-  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MatSelectModule, BarChartComponent, LineChartComponent],
+  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MatSelectModule, BarChartComponent, LineChartComponent, MetricChartComponent],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
 })

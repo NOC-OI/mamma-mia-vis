@@ -32,3 +32,9 @@ export interface MetricsUnits {
   temperature: string,
   pressure: string,
 }
+
+export interface SeriesPoint {
+  date: Date;
+  value: number;
+  metric: string;
+}
