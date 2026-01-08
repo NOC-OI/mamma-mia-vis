@@ -1,46 +1,50 @@
 <app-header></app-header>
 <div class="container-fluid container-stack">
     <div class="row">
-        <div class="col-12">
+        <div class="col"></div>
+        <div class="col-7 py-4">
             <!-- <div  id="cesiumContainer" class="simulation-panel">
             </div> -->
-            <div class="actions-panel">
-                <mat-card>
-                    <mat-card-content class="card-content-body">
-                        <div class="row row-cols-2 mt-1">
-                            <div class="col">
-                                <mat-form-field>
-                                    <mat-label class="missions-dropdown-box"><b>Missions</b></mat-label>
-                                    <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="startVisualisation()">
-                                        <mat-option value="bioCarbon">BIO Carbon</mat-option>
-                                        <mat-option value="rapidArray">RAPID Array virtual mooring</mat-option>
-                                    </mat-select>
-                                </mat-form-field>
-                            </div>
-                            @if(showDeploymentsList){
-                            <div class="col">
-                                <mat-form-field>
-                                    <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
-                                    <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="startVisualisation()">
-                                        <mat-option value="deployment646">Deployment 645</mat-option>
-                                        <mat-option value="deployment646">Deployment 646</mat-option>
-                                        <mat-option value="deployment648">Deployment 648</mat-option>
-                                        <mat-option value="deployment649">Deployment 649</mat-option>
-                                        <mat-option value="deployment650">Deployment 650</mat-option>
-                                    </mat-select>
-                                </mat-form-field>
-                            </div>
-                            }
+            <mat-card>
+                <mat-card-content class="card-content-body">
+                    <div class="row  row-cols-3 mt-1">
+                        <div class="col">
+                            <mat-form-field>
+                                <mat-label class="missions-dropdown-box"><b>Missions</b></mat-label>
+                                <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="startVisualisation()">
+                                    <mat-option value="bioCarbon">BIO Carbon</mat-option>
+                                    <mat-option value="rapidArray">RAPID Array virtual mooring</mat-option>
+                                </mat-select>
+                            </mat-form-field>
                         </div>
-                        <div class="row mt-1 metrics-panel">
-                            <!-- <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart> -->
-                            <app-line-chart class="time-series-graph"></app-line-chart>
+                        @if(showDeploymentsList){
+                        <div class="col">
+                            <mat-form-field>
+                                <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
+                                <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="startVisualisation()">
+                                    <mat-option value="deployment645">Deployment 645</mat-option>
+                                    <mat-option value="deployment646">Deployment 646</mat-option>
+                                    <mat-option value="deployment648">Deployment 648</mat-option>
+                                    <mat-option value="deployment649">Deployment 649</mat-option>
+                                    <mat-option value="deployment650">Deployment 650</mat-option>
+                                </mat-select>
+                            </mat-form-field>
                         </div>
-                    </mat-card-content>
-                </mat-card>
-            </div>
-            <div class="metrics-panel">
-            </div>
+                        }
+                        <div class="col">
+                            Number of Records: 
+                            <input type="text" [(ngModel)]="numberOfRecords" (change)="startVisualisation()"/>
+                        </div>
+                    </div>
+                    <div class="row row-cols-1 mt-1 metrics-panel">
+                        <div class="col px-4">
+                        <!-- <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart> -->
+                        <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords"></app-line-chart>
+                        </div>
+                    </div>
+                </mat-card-content>
+            </mat-card>
         </div>
+        <div class="col"></div>
     </div>
 </div>

@@ -12,17 +12,19 @@ import { CampaignService } from '../../services/campaign.service';
 })
 export class LineChartComponent implements OnInit, OnChanges{
   @Input() selectedMission = "";
+  @Input() selectedDeployment = "";
+  @Input() numberOfRecords = 50;
+
   metricsUnits: MetricsUnits = {
     temperature: '°C',
     pressure: 'bar',
-    conductivity: 'mS/cm'
+    conductivity: 'mS/cm',
+    salinity: '',
   };
 
   errorMessage: string | null = null;
   PAGE_NUMBER = 1;
-  RECORDS_PER_PAGE = 1000;
-  metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
-  selectedDeployment = ""
+  metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.numberOfRecords };
   voronoi = false;
   
   constructor(private campaignService: CampaignService){
@@ -30,6 +32,13 @@ export class LineChartComponent implements OnInit, OnChanges{
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords']){
+        this.selectedMission = !this.selectedMission ? changes['selectedMission']?.currentValue : this.selectedMission;
+        this.selectedDeployment = !this.selectedDeployment ?  changes['selectedDeployment']?.currentValue : this.selectedDeployment;
+        this.numberOfRecords = !this.numberOfRecords ?  changes['numberOfRecords']?.currentValue : this.numberOfRecords;
+        this.getMetricsUnits();
+        this.getMetricsData();
+    }
     if (changes['metrics'] && this.metricsData.metrics.length > 0) {
       this.createChart();
     }
@@ -41,37 +50,41 @@ export class LineChartComponent implements OnInit, OnChanges{
   }
 
   getMetricsUnits() {
-    this.campaignService.getMetricsUnits(this.selectedMission).subscribe({
-      next: (data) => {
-        this.metricsUnits = data;
-        this.errorMessage = null;
-      },
-      error: (error) => {
-        this.errorMessage = error.message;
-        console.error('Error fetching metrics units: ', error)
-      }
-    });
+    if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
+      this.campaignService.getMetricsUnits(this.selectedMission, this.selectedDeployment).subscribe({
+        next: (data) => {
+          this.metricsUnits = data;
+          this.errorMessage = null;
+        },
+        error: (error) => {
+          this.errorMessage = error.message;
+          console.error('Error fetching metrics units: ', error)
+        }
+      });
+    }
   }
 
   getMetricsData() {
-
-    this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.PAGE_NUMBER, this.RECORDS_PER_PAGE).subscribe({
-      next: (data) => {
-        this.metricsData = data;
-        this.metricsData.metrics.forEach(metricsReading => {
-          if (typeof metricsReading.datetime === 'number') {
-              metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
-          }
-        });
-        this.errorMessage = null;
-        this.createChart();
-      },
-      error: (error) => {
-        this.errorMessage = error.message;
-        console.error('Error fetching metrics data:', error);
-      }
-    });
-
+    if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
+          if(this.numberOfRecords > 0){
+            this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.PAGE_NUMBER, this.numberOfRecords).subscribe({
+              next: (data) => {
+                this.metricsData = data;
+                this.metricsData.metrics.forEach(metricsReading => {
+                  if (typeof metricsReading.datetime === 'number') {
+                      metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
+                  }
+                });
+                this.errorMessage = null;
+                this.createChart();
+              },
+              error: (error) => {
+                this.errorMessage = error.message;
+                console.error('Error fetching metrics data:', error);
+              }
+            });
+          }          
+    }
   }
   
   private createChart(): void {
@@ -114,16 +127,18 @@ export class LineChartComponent implements OnInit, OnChanges{
 
     // 3. SVG Container
 
+    d3.select("app-line-chart").selectAll("svg").remove();
+
     const svg = d3.select("app-line-chart").append('svg')
       .attr("width", width)
       .attr("height", height)
       .attr("viewBox", [0, 0, width, height])
-      .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;");
+      .attr("style", "max-width: 100%; height: 550px; overflow: visible; font: 10px sans-serif;");
 
     // 4. Axes
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(d3.timeMinute).tickSizeOuter(0)
+      .call(d3.axisBottom(x).ticks(d3.timeHour).tickSizeOuter(0)
       .tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
       .selectAll("text")
       // .style("font-size", "9px")
@@ -135,7 +150,7 @@ export class LineChartComponent implements OnInit, OnChanges{
 
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y))
+      .call(d3.axisLeft(y).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
       .call(g => g.selectAll(".tick line").clone()
       // .call(this.voronoi ? () => {} : g => g.selectAll(".tick line").clone()
@@ -198,7 +213,6 @@ export class LineChartComponent implements OnInit, OnChanges{
       // dot.select("text").text(`${d.metric}: ${d.value.toFixed(2)}`);
       dot.select("circle").attr("stroke", color(d.metric));
       
-      // UPDATED: Displays "Value Unit" (e.g., 1013.25 bar)
       dotLabel.text(`${d.value.toFixed(2)} ${unit}`);
       dot.attr("display", null);
     };

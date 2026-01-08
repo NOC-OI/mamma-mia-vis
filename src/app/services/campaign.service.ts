@@ -42,7 +42,6 @@ export class CampaignService {
     }
 
   trajectoryDeploymentUrl = this.rootAPIUrl + trajectoryDeploymentUrl;
-  console.log(' URL: ', trajectoryDeploymentUrl);
   return this.http.get<TrajectoryData>(trajectoryDeploymentUrl)
   .pipe(
       retry(3), // Retry up to 3 times if the request fails
@@ -53,7 +52,7 @@ export class CampaignService {
   getMetricsData(selectedMission: string, selectedDeployment: string, page: number, recordsPerPage: number): Observable<MetricsPage> {
     let metricsDeploymentUrl = selectedMission == "bioCarbon" ? 
                               "" : this.configService.config.relativeMetricsUrl.rapidArray;
-    if(selectedDeployment){
+    if(selectedDeployment && selectedMission == "bioCarbon"){
         switch(selectedDeployment){
           case "deployment645": 
             metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment645;
@@ -68,7 +67,7 @@ export class CampaignService {
             metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment649;
             break;
           case "deployment650":
-            metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment649;
+            metricsDeploymentUrl = this.configService.config.relativeMetricsUrl.bioCarbon.deployment650;
             break;
         }
     }
@@ -81,11 +80,42 @@ export class CampaignService {
       );
   }
 
-  getMetricsUnits(selectedMission: string): Observable<MetricsUnits> {
-    let relativeMetricsUnitsUrl = selectedMission == "bioCarbon" ? 
-                                  this.configService.config.relativeMetricsUnitsUrl.bioCarbon : 
-                                  this.configService.config.relativeMetricsUnitsUrl.rapidArray;
-    const apiMetricsUnitsUrl = this.rootAPIUrl + relativeMetricsUnitsUrl;
+  getMetricsUnits(selectedMission: string, selectedDeployment: string): Observable<MetricsUnits> {
+    let relativeMetricsUnitsUrl = "";
+    let sensors: Array<string> = [];
+    
+    if (selectedMission == "bioCarbon"){
+      relativeMetricsUnitsUrl = ""
+    }else{
+      relativeMetricsUnitsUrl = this.configService.config.relativeMetricsUnitsUrl.rapidArray;
+      sensors = ["CTD", ""]
+    }
+
+    if(selectedDeployment && selectedMission == "bioCarbon"){
+      switch(selectedDeployment){
+        case "deployment645": 
+          relativeMetricsUnitsUrl = this.configService.config.relativeMetricsUnitsUrl.bioCarbon.deployment645;
+          sensors = ["CTD", "radiometer"]
+          break;
+        case "deployment646":
+          relativeMetricsUnitsUrl = this.configService.config.relativeMetricsUnitsUrl.bioCarbon.deployment646;
+          sensors = ["CTD", "radiometer"]
+          break;
+        case "deployment648":
+          relativeMetricsUnitsUrl = this.configService.config.relativeMetricsUnitsUrl.bioCarbon.deployment648;
+          sensors = ["CTD", "radiometer"]
+          break;
+        case "deployment649":
+          relativeMetricsUnitsUrl = this.configService.config.relativeMetricsUnitsUrl.bioCarbon.deployment649;
+          sensors = ["CTD", "optical_backscatter"]
+          break;
+        case "deployment650":
+          relativeMetricsUnitsUrl = this.configService.config.relativeMetricsUnitsUrl.bioCarbon.deployment650;
+          sensors = ["CTD", "optical_backscatter"]
+          break;
+      }
+    }                     
+    const apiMetricsUnitsUrl = `${this.rootAPIUrl}${relativeMetricsUnitsUrl}&second_sensor=${sensors[0]}&third_sensor=${sensors[1]}`;
     return this.http.get<MetricsUnits>(apiMetricsUnitsUrl)
     .pipe(
       retry(3),

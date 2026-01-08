@@ -16,11 +16,11 @@ mat-slider {
   left: 2rem;
   z-index: 2; 
   width: 87vw;
-  min-width: 365px
+  min-width: 365px;
 }
 
 .card-content-body {
-  height: 700px;
+  height: 770px;
 }
 
 .simulation-panel {
@@ -34,9 +34,11 @@ mat-slider {
   position: relative;
   top: 5px;
   left: 1rem;
-  margin-right: 25px;
+  margin-right: 2rem;
+  margin-left: 2rem;
   z-index: 6; 
   background-color: white;
+  height: 640px;
 }
 
 .time-series-graph {

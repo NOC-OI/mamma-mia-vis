@@ -29,6 +29,7 @@ export interface SensorsReadings {
 
 export interface MetricsUnits {
   conductivity: string,
+  salinity: string,
   temperature: string,
   pressure: string,
 }

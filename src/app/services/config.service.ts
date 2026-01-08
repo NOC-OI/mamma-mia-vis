@@ -27,7 +27,13 @@ interface AppConfig {
     rapidArray: string;
   };
   relativeMetricsUnitsUrl: {
-    bioCarbon: string;
+    bioCarbon: {
+      deployment645: string;
+      deployment646: string;
+      deployment648: string;
+      deployment649: string;
+      deployment650: string;
+    };
     rapidArray: string;
   };
   relativeMissionDeployments: {

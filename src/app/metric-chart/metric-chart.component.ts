@@ -58,7 +58,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnInit {
 
 
   getMetricsUnits() {
-    this.campaignService.getMetricsUnits(this.selectedMission).subscribe({
+    this.campaignService.getMetricsUnits(this.selectedMission, this.selectedMission).subscribe({
       next: (data) => {
         this.metricsUnits = data;
         this.createChart(); // Create the initial empty chart structure

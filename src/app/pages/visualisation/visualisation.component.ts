@@ -55,13 +55,18 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   globe: Globe | undefined;
 
   trajectoryData: TrajectoryData | null = null;
-  RECORDS_PER_PAGE = 50
+  PAGE_NUMBER = 1;
+  RECORDS_PER_PAGE = 1000;
   metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
   metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
 
   selectedMission = "";
+  currentMission = "";
   selectedDeployment = ""
+  currentDeployment = "";
+  numberOfRecords = 0;
+  currentNumberOfRecords = 0;
   showDeploymentsList = false;
   isLoading = false;
   recordsPerPage = this.RECORDS_PER_PAGE;
@@ -73,9 +78,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
-    if(this.selectedMission){
-      this.startSequentialMetricsFetch();
-    }
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -99,26 +101,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.fetchSubscription) {
       this.fetchSubscription.unsubscribe();
     }
-  }
-
-  getMetricsData() {
-
-    this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, 2, 115).subscribe({
-      next: (data) => {
-        this.metricsData = data;
-        this.metricsData.metrics.forEach(metricsReading => {
-          if (typeof metricsReading.datetime === 'number') {
-              metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
-          }
-        });
-        this.errorMessage = null;
-        this.addSensorReadingsToTimeSeries();
-      },
-      error: (error) => {
-        this.errorMessage = error.message;
-        console.error('Error fetching metrics data:', error);
-      }
-    });
   }
 
   async setGlobalScene(){
@@ -317,11 +299,9 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   startVisualisation() { 
     this.showDeploymentsList = this.selectedMission == "bioCarbon";
-    if(!this.showDeploymentsList || this.selectedDeployment){
-      this.cleanUpResources();
-      // this.getMetricsData();
-      // this.startSequentialMetricsFetch();
-    }
+    this.currentMission = this.selectedMission;
+    this.currentDeployment = this.selectedDeployment;
+    this.currentNumberOfRecords = this.numberOfRecords;
   }
 
   updateGlobeMaterialUniforms(zoomMagnitude: number): void {
@@ -516,7 +496,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
    * Initializes and manages the sequential fetching of paginated data.
    */
     startSequentialMetricsFetch(): void {
-      console.log("Enter to new METHODS!")
+      //TODO: Check if this logic is useful to play an animation of data by a period of time
+      
       this.isLoading = true;
       this.metricsData = { metrics: [], totalRecords: Infinity, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
 
@@ -578,8 +559,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
         }
       });
   }
-
-
   
   /**
    * Processes the data from a single page and appends it to the main store.
@@ -591,7 +570,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     if(page.metrics){
       // 1. Append the new data
       this.metricsData.metrics = page.metrics;
-      console.log(' METRICS DATA!: ', page.metrics)
       // 2. Apply your existing data processing logic
       page.metrics.forEach(metricsReading => {
         if (typeof metricsReading.datetime === 'number') {
