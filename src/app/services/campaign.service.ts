@@ -88,7 +88,7 @@ export class CampaignService {
       relativeMetricsUnitsUrl = ""
     }else{
       relativeMetricsUnitsUrl = this.configService.config.relativeMetricsUnitsUrl.rapidArray;
-      sensors = ["CTD", ""]
+      sensors = ["CTD", "radiometer"]
     }
 
     if(selectedDeployment && selectedMission == "bioCarbon"){

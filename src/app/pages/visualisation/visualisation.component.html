@@ -2,7 +2,7 @@
 <div class="container-fluid container-stack">
     <div class="row">
         <div class="col"></div>
-        <div class="col-7 py-4">
+        <div class="col-12 py-4">
             <!-- <div  id="cesiumContainer" class="simulation-panel">
             </div> -->
             <mat-card>
@@ -36,10 +36,21 @@
                             <input type="text" [(ngModel)]="numberOfRecords" (change)="startVisualisation()"/>
                         </div>
                     </div>
-                    <div class="row row-cols-1 mt-1 metrics-panel">
+                    <div class="row row-cols-2 my-2 metrics-panel">
                         <div class="col px-4">
-                        <!-- <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart> -->
-                        <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords"></app-line-chart>
+                            <!-- <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart> -->
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[0]"></app-line-chart>
+                        </div>
+                        <div class="col px-4">
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[1]"></app-line-chart>
+                        </div>
+                    </div>
+                    <div class="row row-cols-2 my-2 metrics-panel">
+                        <div class="col px-4">
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[2]"></app-line-chart>
+                        </div>
+                        <div class="col px-4">
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[3]"></app-line-chart>
                         </div>
                     </div>
                 </mat-card-content>

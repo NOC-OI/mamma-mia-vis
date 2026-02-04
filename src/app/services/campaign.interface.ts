@@ -32,6 +32,7 @@ export interface MetricsUnits {
   salinity: string,
   temperature: string,
   pressure: string,
+  chlorophyll: string
 }
 
 export interface SeriesPoint {

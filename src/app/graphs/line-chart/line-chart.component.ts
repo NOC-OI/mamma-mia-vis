@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild, ElementRef, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, ElementRef, OnChanges, SimpleChanges, AfterViewInit } from '@angular/core';
 import * as d3 from 'd3';
 import { MetricsUnits, MetricsPage, SensorsReadings, SeriesPoint } from '../../services/campaign.interface';
 import { CampaignService } from '../../services/campaign.service';
@@ -10,16 +10,20 @@ import { CampaignService } from '../../services/campaign.service';
   templateUrl: './line-chart.component.html',
   styleUrl: './line-chart.component.scss'
 })
-export class LineChartComponent implements OnInit, OnChanges{
+export class LineChartComponent implements OnChanges, AfterViewInit{
+  @ViewChild('chartContainer', { static: true }) chartContainer!: ElementRef;
+
   @Input() selectedMission = "";
   @Input() selectedDeployment = "";
   @Input() numberOfRecords = 50;
+  @Input() variableName = "";
 
   metricsUnits: MetricsUnits = {
     temperature: '°C',
     pressure: 'bar',
     conductivity: 'mS/cm',
     salinity: '',
+    chlorophyll: '',
   };
 
   errorMessage: string | null = null;
@@ -32,19 +36,20 @@ export class LineChartComponent implements OnInit, OnChanges{
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords']){
+    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords'] || changes['variableName']){
         this.selectedMission = !this.selectedMission ? changes['selectedMission']?.currentValue : this.selectedMission;
         this.selectedDeployment = !this.selectedDeployment ?  changes['selectedDeployment']?.currentValue : this.selectedDeployment;
         this.numberOfRecords = !this.numberOfRecords ?  changes['numberOfRecords']?.currentValue : this.numberOfRecords;
+        this.variableName = !this.variableName ? changes['variableName']?.currentValue : this.variableName;
         this.getMetricsUnits();
         this.getMetricsData();
     }
     if (changes['metrics'] && this.metricsData.metrics.length > 0) {
-      this.createChart();
+      this.createChart(this.variableName);
     }
   }
 
-  ngOnInit(): void {
+  ngAfterViewInit(): void {
     this.getMetricsUnits();
     this.getMetricsData();
   }
@@ -76,7 +81,7 @@ export class LineChartComponent implements OnInit, OnChanges{
                   }
                 });
                 this.errorMessage = null;
-                this.createChart();
+                this.createChart(this.variableName);
               },
               error: (error) => {
                 this.errorMessage = error.message;
@@ -87,147 +92,120 @@ export class LineChartComponent implements OnInit, OnChanges{
     }
   }
   
-  private createChart(): void {
+  private createChart(metricName: string): void {
+    if (!this.chartContainer || !metricName || !this.metricsData) return;
+
     const width = 928;
     const height = 550;
     const margin = { top: 20, right: 20, bottom: 30, left: 30 };
 
-    // 1. Transform Data: Flatten multiple properties into individual series points
-    // const metrics = ['temperature', 'pressure', 'conductivity'];
-    const metrics = Object.keys(this.metricsUnits) as Array<keyof MetricsUnits>;
+    // 1. Transform Data
     const formattedData: SeriesPoint[] = [];
-    
     this.metricsData.metrics.forEach(d => {
       const date = new Date(d.datetime);
-      metrics.forEach(metric => {
-        const val = d[metric as keyof SensorsReadings];
-        if (typeof val === 'number') {
-          formattedData.push({ date, value: val, metric });
-        }
-      });
+      const val = d[metricName as keyof SensorsReadings];
+      if (typeof val === 'number') {
+        formattedData.push({ date, value: val, metric: metricName });
+      }
     });
 
-    // 2. Scales
-    const xExtent = d3.extent(this.metricsData.metrics, d => new Date(d.datetime));
-    if (!xExtent[0] || !xExtent[1]) return; 
+    if (formattedData.length === 0) return;
 
+    // 2. Color Scale Update
+    // We get all possible keys from your units object to ensure 
+    // each variable consistently gets its own color across instances.
+    const allMetrics = Object.keys(this.metricsUnits);
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+      .domain(allMetrics);
+    
+    const selectedColor = colorScale(metricName);
+
+    // 3. Scales
+    const xExtent = d3.extent(formattedData, d => d.date);
     const x = d3.scaleTime()
       .domain(xExtent as [Date, Date])
       .range([margin.left, width - margin.right]);
 
-    // Y scale must now cover the min/max of ALL metrics combined
     const yExtent = d3.extent(formattedData, d => d.value);
     const y = d3.scaleLinear()
       .domain([yExtent[0] ?? 0, yExtent[1] ?? 0]).nice()
       .range([height - margin.bottom, margin.top]);
     
-    // Color scale for different lines
-    const color = d3.scaleOrdinal(d3.schemeCategory10)
-      .domain(metrics);
+    const host = this.chartContainer.nativeElement;
+    d3.select(host).selectAll("svg").remove();
 
-    // 3. SVG Container
-
-    d3.select("app-line-chart").selectAll("svg").remove();
-
-    const svg = d3.select("app-line-chart").append('svg')
+    const svg = d3.select(host).append("svg")
       .attr("width", width)
       .attr("height", height)
       .attr("viewBox", [0, 0, width, height])
-      .attr("style", "max-width: 100%; height: 550px; overflow: visible; font: 10px sans-serif;");
+      .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;");
 
     // 4. Axes
+    const unit = this.metricsUnits[metricName as keyof MetricsUnits];
+    
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(d3.timeHour).tickSizeOuter(0)
-      .tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
+      .call(d3.axisBottom(x).ticks(d3.timeHour).tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
       .selectAll("text")
-      // .style("font-size", "9px")
-      .style("fill", "#666")
-      .style("text-anchor", "end")
-      .attr("dx", "-.8em")  // Horizontal offset
-      .attr("dy", ".15em")  // Vertical offset
-      .attr("transform", "rotate(-35)"); // Rotate 45 degrees counter-clockwise
+      .attr("transform", "rotate(-35)")
+      .style("text-anchor", "end");
 
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
-      .call(g => g.selectAll(".tick line").clone()
-      // .call(this.voronoi ? () => {} : g => g.selectAll(".tick line").clone()
-        .attr("x2", width - margin.left - margin.right)
-        .attr("stroke-opacity", 0.1))
       .call(g => g.select(".tick:last-of-type text").clone()
         .attr("x", 3)
         .attr("text-anchor", "start")
         .attr("font-weight", "bold")
-        .text("Depth (m)")
-    )
+        .text(`${metricName} (${unit})`)
+      );
 
-    // 5. Group data by metric for line generation
-    const groups = d3.group(formattedData, d => d.metric);
-
+    // 5. Line generation
     const line = d3.line<SeriesPoint>()
       .x(d => x(d.date)!)
       .y(d => y(d.value)!);
 
-    // 6. Draw Lines
-    const path = svg.append("g")
+    // 6. Draw Line with unique color
+    svg.append("path")
+      .datum(formattedData)
       .attr("fill", "none")
+      .attr("stroke", selectedColor) // Use the calculated color
       .attr("stroke-width", 2)
       .attr("stroke-linejoin", "round")
-      .attr("stroke-linecap", "round")
-      .selectAll("path")
-      .data(groups)
-      .join("path")
-      .attr("stroke", ([metric]) => color(metric))
-      .attr("d", ([_, values]) => line(values))
-      .style("mix-blend-mode", "multiply");
+      .attr("d", line);
 
-    // 7. Interactivity (The "Dot")
+    // 7. Interactivity
     const dot = svg.append("g").attr("display", "none");
-    dot.append("circle").attr("r", 2.5);
+    dot.append("circle")
+      .attr("r", 4)
+      .attr("fill", selectedColor) // Dot color matches the line
+      .attr("stroke", "white")
+      .attr("stroke-width", 1);
 
-    // Use 'dy' to give the text some breathing room above the point
     const dotLabel = dot.append("text")
       .attr("text-anchor", "middle")
-      .attr("y", -10)
-      .style("font-weight", "bold");
+      .attr("y", -12)
+      .style("font-weight", "bold")
+      .style("fill", "#333");
 
-    // Event Handlers
     const pointermoved = (event: any) => {
-      const [xm, ym] = d3.pointer(event);
-      // Find the single closest point among all series
-      const i = d3.leastIndex(formattedData, d => Math.hypot(x(d.date)! - xm, y(d.value)! - ym));
-      if (i === undefined) return;
-
+      const [xm] = d3.pointer(event);
+      const bisect = d3.bisector((d: SeriesPoint) => d.date).center;
+      const i = bisect(formattedData, x.invert(xm));
       const d = formattedData[i];
-      // Look up the unit using the metric key typed via MetricsUnits
-      const unit = this.metricsUnits[d.metric as keyof MetricsUnits];
 
-      // Update highlight: Fade others, emphasize current metric line
-      path.style("stroke", ([metric]) => metric === d.metric ? color(metric) : "#ddd")
-          .attr("stroke-width", ([metric]) => metric === d.metric ? 3 : 1)
-          .filter(([metric]) => metric === d.metric).raise();
-      
-      dot.attr("transform", `translate(${x(d.date)},${y(d.value)})`);
-      // dot.select("text").text(`${d.metric}: ${d.value.toFixed(2)}`);
-      dot.select("circle").attr("stroke", color(d.metric));
-      
-      dotLabel.text(`${d.value.toFixed(2)} ${unit}`);
-      dot.attr("display", null);
+      if (d) {
+        dot.attr("transform", `translate(${x(d.date)},${y(d.value)})`);
+        dotLabel.text(`${d.value.toFixed(2)} ${unit}`);
+        dot.attr("display", null);
+      }
     };
 
     svg
-      .on("pointerenter", () => {
-        path.style("mix-blend-mode", null).style("stroke", "#ddd");
-        dot.attr("display", null);
-      })
+      .on("pointerenter", () => dot.attr("display", null))
       .on("pointermove", pointermoved)
-      .on("pointerleave", () => {
-        path.style("mix-blend-mode", "multiply").style("stroke", "steelblue");
-        dot.attr("display", "none");
-      })
-      .on("touchstart", event => event.preventDefault());
+      .on("pointerleave", () => dot.attr("display", "none"));
   }
 
   roundTo2Decimals( input?: number) {

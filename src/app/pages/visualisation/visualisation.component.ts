@@ -67,6 +67,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   currentDeployment = "";
   numberOfRecords = 0;
   currentNumberOfRecords = 0;
+  readingVariables: Array<string> = ["pressure", "salinity", "temperature", "chlorophyll"];
   showDeploymentsList = false;
   isLoading = false;
   recordsPerPage = this.RECORDS_PER_PAGE;
