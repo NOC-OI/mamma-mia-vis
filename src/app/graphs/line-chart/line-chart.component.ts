@@ -3,11 +3,12 @@ import * as d3 from 'd3';
 import { MetricsUnits, MetricsPage, SensorsReadings, SeriesPoint } from '../../services/campaign.interface';
 import { CampaignService } from '../../services/campaign.service';
 import { Library } from '@observablehq/stdlib';
+import { ChartLegendComponent } from '../chart-legend/chart-legend.component';
 
 @Component({
   selector: 'app-line-chart',
   standalone: true,
-  imports: [],
+  imports: [ChartLegendComponent],
   templateUrl: './line-chart.component.html',
   styleUrl: './line-chart.component.scss'
 })
@@ -33,6 +34,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   PAGE_NUMBER = 1;
   metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.numberOfRecords };
   voronoi = false;
+  colorScale: d3.ScaleSequential<string, never> | undefined;
   
   constructor(private campaignService: CampaignService){
 
@@ -143,11 +145,13 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .domain([yExtent_depth[0] ?? 0, yExtent_depth[1] ?? 0]).nice()
       .range([height - margin.bottom, margin.top]);
 
-    const color = d3.scaleSequential(y.domain(), d3.interpolateTurbo);    
+    const lineColour = d3.scaleSequential(y_depth.domain(), d3.interpolateTurbo);    
 
     const chartHost = this.chartContainer.nativeElement;
     
     d3.select(chartHost).selectAll("svg").remove();
+    
+    this.colorScale = d3.scaleSequential(d3.interpolateTurbo).domain(y_depth.domain());
     
 
     //Selecting canvas of time series
@@ -200,7 +204,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
         .data(d3.ticks(0, 1, 10))
       .join("stop")
         .attr("offset", d => d)
-        .attr("stop-color", color.interpolator());
+        .attr("stop-color", lineColour.interpolator());
     
     // 6. Draw Line with unique color
     svg.append("path")
