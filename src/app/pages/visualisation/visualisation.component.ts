@@ -61,20 +61,20 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   trajectoryData: TrajectoryData | null = null;
   PAGE_NUMBER = 1;
-  RECORDS_PER_PAGE = 1000;
-  metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
+  PAGE_SIZE = 1000;
+  metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.PAGE_SIZE };
   metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
   selectedMission = "";
   currentMission = "";
   selectedDeployment = ""
   currentDeployment = "";
-  numberOfRecords = 0;
+  numberOfRecords = 1000;
   currentNumberOfRecords = 0;
   readingVariables: Array<string> = ["pressure", "salinity", "temperature", "chlorophyll"];
   showDeploymentsList = false;
   isLoading = false;
-  recordsPerPage = this.RECORDS_PER_PAGE;
+  recordsPerPage = this.PAGE_SIZE;
   startDate: Date | null = null;
   endDate: Date | null = null;
   strStartDate = "";
@@ -530,7 +530,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     //TODO: Check if this logic is useful to play an animation of data by a period of time
     
     this.isLoading = true;
-    this.metricsData = { metrics: [], totalRecords: Infinity, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
+    this.metricsData = { metrics: [], totalRecords: Infinity, currentPage: 1, recordsPerPage: this.PAGE_SIZE };
 
     let currentPage = 0; 
     let totalRecords = Infinity;

@@ -2,6 +2,7 @@ import { Component, Input, OnInit, ViewChild, ElementRef, OnChanges, SimpleChang
 import * as d3 from 'd3';
 import { MetricsUnits, MetricsPage, SensorsReadings, SeriesPoint } from '../../services/campaign.interface';
 import { CampaignService } from '../../services/campaign.service';
+import { Library } from '@observablehq/stdlib';
 
 @Component({
   selector: 'app-line-chart',
@@ -107,9 +108,10 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     const formattedData: SeriesPoint[] = [];
     this.metricsData.metrics.forEach(d => {
       const date = new Date(d.datetime);
+      const depth = d.depth;
       const val = d[metricName as keyof SensorsReadings];
       if (typeof val === 'number') {
-        formattedData.push({ date, value: val, metric: metricName });
+        formattedData.push({ date, depth: depth, value: val, metric: metricName });
       }
     });
 
@@ -119,10 +121,11 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     // We get all possible keys from your units object to ensure 
     // each variable consistently gets its own color across instances.
     const allMetrics = Object.keys(this.metricsUnits);
-    const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-      .domain(allMetrics);
     
-    const selectedColor = colorScale(metricName);
+    // const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+    //   .domain(allMetrics);
+    
+    // const selectedColor = colorScale(metricName);
 
     // 3. Scales
     const xExtent = d3.extent(formattedData, d => d.date);
@@ -134,11 +137,21 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     const y = d3.scaleLinear()
       .domain([yExtent[0] ?? 0, yExtent[1] ?? 0]).nice()
       .range([height - margin.bottom, margin.top]);
-    
-    const host = this.chartContainer.nativeElement;
-    d3.select(host).selectAll("svg").remove();
 
-    const svg = d3.select(host).append("svg")
+    const yExtent_depth = d3.extent(formattedData, d=> d.depth);
+    const y_depth = d3.scaleLinear()
+      .domain([yExtent_depth[0] ?? 0, yExtent_depth[1] ?? 0]).nice()
+      .range([height - margin.bottom, margin.top]);
+
+    const color = d3.scaleSequential(y.domain(), d3.interpolateTurbo);    
+
+    const chartHost = this.chartContainer.nativeElement;
+    
+    d3.select(chartHost).selectAll("svg").remove();
+    
+
+    //Selecting canvas of time series
+    const svg = d3.select(chartHost).append("svg")
       .attr("width", width)
       .attr("height", height)
       .attr("viewBox", [0, 0, width, height])
@@ -149,7 +162,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(d3.timeHour).tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
+      // .call(d3.axisBottom(x).ticks(d3.timeHour).tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
+      .call(d3.axisBottom(x).ticks(d3.timeDay))
       .selectAll("text")
       .attr("transform", "rotate(-35)")
       .style("text-anchor", "end");
@@ -170,20 +184,62 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .x(d => x(d.date)!)
       .y(d => y(d.value)!);
 
+    // Append the color gradient.
+    const stdlib = new Library();
+    const { DOM } = stdlib;
+    const gradient = DOM.uid();
+
+    svg.append("linearGradient")
+        .attr("id", gradient.id)
+        .attr("gradientUnits", "userSpaceOnUse")
+        .attr("x1", 0)
+        .attr("y1", height - margin.bottom)
+        .attr("x2", 0)
+        .attr("y2", margin.top)
+      .selectAll("stop")
+        .data(d3.ticks(0, 1, 10))
+      .join("stop")
+        .attr("offset", d => d)
+        .attr("stop-color", color.interpolator());
+    
     // 6. Draw Line with unique color
     svg.append("path")
       .datum(formattedData)
       .attr("fill", "none")
-      .attr("stroke", selectedColor) // Use the calculated color
+      // .attr("stroke", selectedColor) // Use the calculated color
+      .attr("stroke", gradient) // Use the calculated color
       .attr("stroke-width", 2)
       .attr("stroke-linejoin", "round")
       .attr("d", line);
+    
+    // 7. Create the grid.
+    svg.append("g")
+        .attr("stroke", "currentColor")
+        .attr("stroke-opacity", 0.1)
+        .call(g => g.append("g")
+          .selectAll("line")
+          .data(x.ticks())
+          .join("line")
+            .attr("x1", d => 0.5 + x(d))
+            .attr("x2", d => 0.5 + x(d))
+            .attr("y1", margin.top)
+            .attr("y2", height - margin.bottom))
+        .call(g => g.append("g")
+          .selectAll("line")
+          .data(y.ticks())
+          .join("line")
+            .attr("y1", d => 0.5 + y(d))
+            .attr("y2", d => 0.5 + y(d))
+            .attr("x1", margin.left)
+            .attr("x2", width - margin.right));
 
-    // 7. Interactivity
+
+    // 8. Interactivity
     const dot = svg.append("g").attr("display", "none");
     dot.append("circle")
       .attr("r", 4)
-      .attr("fill", selectedColor) // Dot color matches the line
+      // .attr("fill", selectedColor) // Dot color matches the line
+      .attr("fill", gradient) // Dot color matches the line
       .attr("stroke", "white")
       .attr("stroke-width", 1);
 

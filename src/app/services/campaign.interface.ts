@@ -37,6 +37,7 @@ export interface MetricsUnits {
 
 export interface SeriesPoint {
   date: Date;
+  depth: number;
   value: number;
   metric: string;
 }
