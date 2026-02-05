@@ -17,6 +17,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   @Input() selectedDeployment = "";
   @Input() numberOfRecords = 50;
   @Input() variableName = "";
+  @Input() startDate = "";
+  @Input() endDate = "";
 
   metricsUnits: MetricsUnits = {
     temperature: '°C',
@@ -36,11 +38,13 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords'] || changes['variableName']){
+    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords'] || changes['variableName'] || changes['startDate'] || changes['endDate']){
         this.selectedMission = !this.selectedMission ? changes['selectedMission']?.currentValue : this.selectedMission;
         this.selectedDeployment = !this.selectedDeployment ?  changes['selectedDeployment']?.currentValue : this.selectedDeployment;
         this.numberOfRecords = !this.numberOfRecords ?  changes['numberOfRecords']?.currentValue : this.numberOfRecords;
         this.variableName = !this.variableName ? changes['variableName']?.currentValue : this.variableName;
+        this.startDate = !this.startDate ? changes['startDate']?.currentValue : this.startDate;
+        this.endDate = !this.endDate ? changes['endDate']?.currentValue : this.endDate;
         this.getMetricsUnits();
         this.getMetricsData();
     }
@@ -72,7 +76,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   getMetricsData() {
     if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
           if(this.numberOfRecords > 0){
-            this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.PAGE_NUMBER, this.numberOfRecords).subscribe({
+            this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.startDate, this.endDate, this.PAGE_NUMBER, this.numberOfRecords).subscribe({
               next: (data) => {
                 this.metricsData = data;
                 this.metricsData.metrics.forEach(metricsReading => {

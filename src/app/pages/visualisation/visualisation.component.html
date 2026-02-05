@@ -7,11 +7,11 @@
             </div> -->
             <mat-card>
                 <mat-card-content class="card-content-body">
-                    <div class="row  row-cols-3 mt-1">
+                    <div class="row row-cols-4 mt-1">
                         <div class="col">
                             <mat-form-field>
                                 <mat-label class="missions-dropdown-box"><b>Missions</b></mat-label>
-                                <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="startVisualisation()">
+                                <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="setParamsForTimeSeriesGraph()">
                                     <mat-option value="bioCarbon">BIO Carbon</mat-option>
                                     <mat-option value="rapidArray">RAPID Array virtual mooring</mat-option>
                                 </mat-select>
@@ -21,7 +21,7 @@
                         <div class="col">
                             <mat-form-field>
                                 <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
-                                <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="startVisualisation()">
+                                <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="setParamsForTimeSeriesGraph()">
                                     <mat-option value="deployment645">Deployment 645</mat-option>
                                     <mat-option value="deployment646">Deployment 646</mat-option>
                                     <mat-option value="deployment648">Deployment 648</mat-option>
@@ -33,24 +33,40 @@
                         }
                         <div class="col">
                             Number of Records: 
-                            <input type="text" [(ngModel)]="numberOfRecords" (change)="startVisualisation()"/>
+                            <input type="text" [(ngModel)]="numberOfRecords" (change)="setParamsForTimeSeriesGraph()"/>
+                        </div>
+                        <div class="col">
+                            <mat-form-field>
+                                <mat-label>Enter a date range</mat-label>
+                                <mat-date-range-input [rangePicker]="picker">
+                                    <input (dateInput)="inputStartDate($event)" matStartDate placeholder="Start date">
+                                    <input (dateInput)="inputEndDate($event)" matEndDate placeholder="End date">
+                                </mat-date-range-input>
+                                <mat-hint>MM/DD/YYYY – MM/DD/YYYY</mat-hint>
+                                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                                <mat-date-range-picker #picker></mat-date-range-picker>
+                            </mat-form-field>
                         </div>
                     </div>
                     <div class="row row-cols-2 my-2 metrics-panel">
                         <div class="col px-4">
                             <!-- <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart> -->
-                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[0]"></app-line-chart>
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
+                            [variableName]="readingVariables[0]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
                         </div>
                         <div class="col px-4">
-                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[1]"></app-line-chart>
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
+                            [variableName]="readingVariables[1]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
                         </div>
                     </div>
                     <div class="row row-cols-2 my-2 metrics-panel">
                         <div class="col px-4">
-                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[2]"></app-line-chart>
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
+                            [variableName]="readingVariables[2]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
                         </div>
                         <div class="col px-4">
-                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" [variableName]="readingVariables[3]"></app-line-chart>
+                            <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
+                            [variableName]="readingVariables[3]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
                         </div>
                     </div>
                 </mat-card-content>

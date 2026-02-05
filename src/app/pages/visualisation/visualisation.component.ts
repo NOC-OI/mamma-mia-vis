@@ -7,7 +7,7 @@ import {Cartesian3, Ion, Viewer, DirectionalLight, Globe,
   Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset, CesiumTerrainProvider} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
-import {FormsModule} from '@angular/forms';
+import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {MatFormFieldModule} from '@angular/material/form-field';  
 import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -20,11 +20,16 @@ import { Observable, Subscription, timer, of } from 'rxjs';
 import { delay, expand, skip } from 'rxjs/operators';
 import { LineChartComponent } from "../../graphs/line-chart/line-chart.component";
 import { MetricChartComponent } from '../../metric-chart/metric-chart.component';
+import {MatDatepickerInputEvent, MatDatepickerModule} from '@angular/material/datepicker';
+import {provideNativeDateAdapter} from '@angular/material/core';
 
 @Component({
   selector: 'app-visualisation',
   standalone: true,
-  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, MatCardModule, MatCheckboxModule, MatSelectModule, BarChartComponent, LineChartComponent, MetricChartComponent],
+  imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, 
+            MatCardModule, MatCheckboxModule, MatSelectModule, BarChartComponent, LineChartComponent, 
+            MetricChartComponent, MatFormFieldModule, MatDatepickerModule, FormsModule, ReactiveFormsModule],
+  providers: [provideNativeDateAdapter()],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
 })
@@ -60,7 +65,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
   metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
-
   selectedMission = "";
   currentMission = "";
   selectedDeployment = ""
@@ -71,6 +75,11 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   showDeploymentsList = false;
   isLoading = false;
   recordsPerPage = this.RECORDS_PER_PAGE;
+  startDate: Date | null = null;
+  endDate: Date | null = null;
+  strStartDate = "";
+  strEndDate = "";
+
   private fetchSubscription: Subscription | null = null;
 
   private preUpdateListener: (() => void) | undefined;
@@ -298,7 +307,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.updateGlobeMaterial();
   }
 
-  startVisualisation() { 
+  setParamsForTimeSeriesGraph() { 
     this.showDeploymentsList = this.selectedMission == "bioCarbon";
     this.currentMission = this.selectedMission;
     this.currentDeployment = this.selectedDeployment;
@@ -493,72 +502,96 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     
   }
 
+  inputStartDate(event: MatDatepickerInputEvent<Date>) {
+    this.startDate = event.value;
+  }
+
+  inputEndDate(event: MatDatepickerInputEvent<Date>) {
+    this.endDate = event.value;
+    this.strStartDate = this.convertToISO(this.startDate);
+    this.strEndDate = this.convertToISO(this.endDate);
+    this.setParamsForTimeSeriesGraph();
+  }
+
+  convertToISO(inputDate: Date | null): string {
+    let isoDate = null;
+    if(inputDate){
+      const padStart = (value: number): string =>
+          value.toString().padStart(2, '0');
+      isoDate = `${padStart(inputDate.getFullYear())}-${padStart(inputDate.getMonth() + 1)}-${inputDate.getDate()} ${padStart(inputDate.getHours())}:${padStart(inputDate.getMinutes())}:${padStart(inputDate.getSeconds())}`;
+    }
+    return isoDate ? isoDate : "";
+  }
+
   /**
    * Initializes and manages the sequential fetching of paginated data.
    */
-    startSequentialMetricsFetch(): void {
-      //TODO: Check if this logic is useful to play an animation of data by a period of time
-      
-      this.isLoading = true;
-      this.metricsData = { metrics: [], totalRecords: Infinity, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
+  startSequentialMetricsFetch(): void {
+    //TODO: Check if this logic is useful to play an animation of data by a period of time
+    
+    this.isLoading = true;
+    this.metricsData = { metrics: [], totalRecords: Infinity, currentPage: 1, recordsPerPage: this.RECORDS_PER_PAGE };
 
-      let currentPage = 0; 
-      let totalRecords = Infinity;
+    let currentPage = 0; 
+    let totalRecords = Infinity;
 
-      // Step 1: Create an Observable stream that handles the loop.
-      const fetchPage$ = of(null).pipe(
-        expand((page: MetricsPage | null) => {
-          // Stop condition check
-          if (page && this.metricsData.metrics.length >= totalRecords) {
-            console.log(' STOPPING! All records fetched.');
-            return of(); 
-          }
-
-          if (page) {
-              currentPage++; 
-          }
-
-          console.log('Fetching Page:', currentPage);
-          
-          return this.campaignService.getMetricsData(
-            this.selectedMission,
-            this.selectedDeployment,
-            currentPage,
-            this.recordsPerPage
-          ).pipe(
-            delay(50) 
-          );
-        }),
-        
-        // We skip the initial seed value 'of(null)'
-        skip(1)
-        
-      // *** FIX: Explicitly cast the final Observable type ***
-      ) as Observable<MetricsPage>;
-      
-      // Step 2: Subscribe to the main Observable to process the data
-      // The type of 'page' is now definitively known as 'MetricsPage'
-      this.fetchSubscription = fetchPage$.subscribe({
-        next: (page: MetricsPage) => { // This line is now safe
-          // Update the total records after the first successful call
-          if (totalRecords === Infinity) {
-            totalRecords = page.totalRecords;
-          }
-
-          // Process and append the data from the current page
-          this.appendAndProcessMetrics(page);
-          
-        },
-        error: (error) => {
-          this.errorMessage = error.message;
-          console.error('Error fetching metrics data:', error);
-          this.isLoading = false;
-        },
-        complete: () => {
-          console.log('All metrics data fetched and processed.');
-          this.isLoading = false;
+    // Step 1: Create an Observable stream that handles the loop.
+    const fetchPage$ = of(null).pipe(
+      expand((page: MetricsPage | null) => {
+        // Stop condition check
+        if (page && this.metricsData.metrics.length >= totalRecords) {
+          console.log(' STOPPING! All records fetched.');
+          return of(); 
         }
-      });
+
+        if (page) {
+            currentPage++; 
+        }
+
+        this.strStartDate = this.convertToISO(this.startDate);
+        this.strEndDate = this.convertToISO(this.endDate);
+        
+        return this.campaignService.getMetricsData(
+          this.selectedMission,
+          this.selectedDeployment,
+          this.strStartDate,
+          this.strEndDate,
+          currentPage,
+          this.recordsPerPage
+        ).pipe(
+          delay(50) 
+        );
+      }),
+      
+      // We skip the initial seed value 'of(null)'
+      skip(1)
+      
+    // *** FIX: Explicitly cast the final Observable type ***
+    ) as Observable<MetricsPage>;
+    
+    // Step 2: Subscribe to the main Observable to process the data
+    // The type of 'page' is now definitively known as 'MetricsPage'
+    this.fetchSubscription = fetchPage$.subscribe({
+      next: (page: MetricsPage) => { // This line is now safe
+        // Update the total records after the first successful call
+        if (totalRecords === Infinity) {
+          totalRecords = page.totalRecords;
+        }
+
+        // Process and append the data from the current page
+        this.appendAndProcessMetrics(page);
+        
+      },
+      error: (error) => {
+        this.errorMessage = error.message;
+        console.error('Error fetching metrics data:', error);
+        this.isLoading = false;
+      },
+      complete: () => {
+        console.log('All metrics data fetched and processed.');
+        this.isLoading = false;
+      }
+    });
   }
   
   /**

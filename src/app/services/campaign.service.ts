@@ -49,7 +49,7 @@ export class CampaignService {
     );
   }
 
-  getMetricsData(selectedMission: string, selectedDeployment: string, page: number, recordsPerPage: number): Observable<MetricsPage> {
+  getMetricsData(selectedMission: string, selectedDeployment: string, startDate: string, endDate: string, pageNumber: number, pageSize: number): Observable<MetricsPage> {
     let metricsDeploymentUrl = selectedMission == "bioCarbon" ? 
                               "" : this.configService.config.relativeMetricsUrl.rapidArray;
     if(selectedDeployment && selectedMission == "bioCarbon"){
@@ -72,7 +72,7 @@ export class CampaignService {
         }
     }
     
-    metricsDeploymentUrl = `${this.rootAPIUrl}${metricsDeploymentUrl}&page=${page}&records_per_page=${recordsPerPage}`;
+    metricsDeploymentUrl = `${this.rootAPIUrl}${metricsDeploymentUrl}&start_date=${startDate}&end_date=${endDate}&page_number=${pageNumber}&page_size=${pageSize}`;
     return this.http.get<MetricsPage>(metricsDeploymentUrl)
     .pipe(
         retry(3),
