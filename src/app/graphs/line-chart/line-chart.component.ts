@@ -21,6 +21,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   @Input() variableName = "";
   @Input() startDate = "";
   @Input() endDate = "";
+  @Input() title = "";
+  @Input() invertYaxis = false;
 
   metricsUnits: MetricsUnits = {
     temperature: '°C',
@@ -41,13 +43,16 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords'] || changes['variableName'] || changes['startDate'] || changes['endDate']){
+    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords'] || changes['variableName'] 
+      || changes['title'] || changes['startDate'] || changes['endDate'] || changes['invertYAxis']){
         this.selectedMission = !this.selectedMission ? changes['selectedMission']?.currentValue : this.selectedMission;
         this.selectedDeployment = !this.selectedDeployment ?  changes['selectedDeployment']?.currentValue : this.selectedDeployment;
         this.numberOfRecords = !this.numberOfRecords ?  changes['numberOfRecords']?.currentValue : this.numberOfRecords;
         this.variableName = !this.variableName ? changes['variableName']?.currentValue : this.variableName;
+        this.title = !this.title ? changes['title']?.currentValue : this.title;
         this.startDate = !this.startDate ? changes['startDate']?.currentValue : this.startDate;
         this.endDate = !this.endDate ? changes['endDate']?.currentValue : this.endDate;
+        this.invertYaxis = !this.invertYaxis ? changes['inverYAxis']?.currentValue : this.invertYaxis;
         this.getMetricsUnits();
         this.getMetricsData();
     }
@@ -136,22 +141,23 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .range([margin.left, width - margin.right]);
 
     const yExtent = d3.extent(formattedData, d => d.value);
+    const yRange = this.invertYaxis ? [margin.top, height - margin.bottom] : [height - margin.bottom, margin.top]
     const y = d3.scaleLinear()
       .domain([yExtent[0] ?? 0, yExtent[1] ?? 0]).nice()
+      .range(yRange);
+
+    const yExtentDepth = d3.extent(formattedData, d=> d.depth);
+    const yDepth = d3.scaleLinear()
+      .domain([yExtentDepth[0] ?? 0, yExtentDepth[1] ?? 0]).nice()
       .range([height - margin.bottom, margin.top]);
 
-    const yExtent_depth = d3.extent(formattedData, d=> d.depth);
-    const y_depth = d3.scaleLinear()
-      .domain([yExtent_depth[0] ?? 0, yExtent_depth[1] ?? 0]).nice()
-      .range([height - margin.bottom, margin.top]);
-
-    const lineColour = d3.scaleSequential(y_depth.domain(), d3.interpolateTurbo);    
+    const lineColour = d3.scaleSequential(yDepth.domain(), d3.interpolateTurbo);    
 
     const chartHost = this.chartContainer.nativeElement;
     
     d3.select(chartHost).selectAll("svg").remove();
     
-    this.colorScale = d3.scaleSequential(d3.interpolateTurbo).domain(y_depth.domain());
+    this.colorScale = d3.scaleSequential(d3.interpolateTurbo).domain(yDepth.domain());
     
 
     //Selecting canvas of time series
@@ -172,11 +178,12 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .attr("transform", "rotate(-35)")
       .style("text-anchor", "end");
 
+    const metricLabelPosition = this.invertYaxis ? ".tick:first-of-type text" : ".tick:last-of-type text";
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
-      .call(g => g.select(".tick:last-of-type text").clone()
+      .call(g => g.select(metricLabelPosition).clone()
         .attr("x", 3)
         .attr("text-anchor", "start")
         .attr("font-weight", "bold")
@@ -188,30 +195,27 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .x(d => x(d.date)!)
       .y(d => y(d.value)!);
 
-    // Append the color gradient.
-    const stdlib = new Library();
-    const { DOM } = stdlib;
-    const gradient = DOM.uid();
+    // Append the color gradient
+    const gradientId = `gradient-${metricName}`;
 
     svg.append("linearGradient")
-        .attr("id", gradient.id)
+        .attr("id", gradientId)
         .attr("gradientUnits", "userSpaceOnUse")
-        .attr("x1", 0)
-        .attr("y1", height - margin.bottom)
-        .attr("x2", 0)
-        .attr("y2", margin.top)
+        .attr("x1", margin.left)
+        .attr("x2", width - margin.right)
+        .attr("y1", 0)
+        .attr("y2", 0)
       .selectAll("stop")
-        .data(d3.ticks(0, 1, 10))
-      .join("stop")
-        .attr("offset", d => d)
-        .attr("stop-color", lineColour.interpolator());
+        .data(formattedData)
+        .join("stop")
+        .attr("offset", d => `${((x(d.date) - margin.left) / (width - margin.left - margin.right)) * 100}%`)
+        .attr("stop-color", d => lineColour(d.depth));
     
     // 6. Draw Line with unique color
     svg.append("path")
       .datum(formattedData)
       .attr("fill", "none")
-      // .attr("stroke", selectedColor) // Use the calculated color
-      .attr("stroke", gradient) // Use the calculated color
+      .attr("stroke", `url(#${gradientId})`)
       .attr("stroke-width", 2)
       .attr("stroke-linejoin", "round")
       .attr("d", line);
@@ -243,7 +247,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     dot.append("circle")
       .attr("r", 4)
       // .attr("fill", selectedColor) // Dot color matches the line
-      .attr("fill", gradient) // Dot color matches the line
+      .attr("fill", `url(#${gradientId})`) // Dot color matches the line
       .attr("stroke", "white")
       .attr("stroke-width", 1);
 
@@ -260,6 +264,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       const d = formattedData[i];
 
       if (d) {
+        dot.select("circle").attr("fill", lineColour(d.depth));
         dot.attr("transform", `translate(${x(d.date)},${y(d.value)})`);
         dotLabel.text(`${d.value.toFixed(2)} ${unit}`);
         dot.attr("display", null);

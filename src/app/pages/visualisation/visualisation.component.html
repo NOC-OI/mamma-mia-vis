@@ -52,21 +52,21 @@
                         <div class="col px-4">
                             <!-- <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart> -->
                             <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
-                            [variableName]="readingVariables[0]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
+                            [variableName]="readingVariables[0]" [title]="timeSeriesTitles[0]" [startDate]="strStartDate" [endDate]="strEndDate" [invertYaxis]="true"></app-line-chart>
                         </div>
                         <div class="col px-4">
                             <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
-                            [variableName]="readingVariables[1]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
+                            [variableName]="readingVariables[1]" [title]="timeSeriesTitles[1]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
                         </div>
                     </div>
                     <div class="row row-cols-2 my-2 metrics-panel">
                         <div class="col px-4">
                             <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
-                            [variableName]="readingVariables[2]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
+                            [variableName]="readingVariables[2]" [title]="timeSeriesTitles[2]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
                         </div>
                         <div class="col px-4">
                             <app-line-chart class="time-series-graph" [selectedMission]="currentMission" [selectedDeployment]="currentDeployment" [numberOfRecords]="currentNumberOfRecords" 
-                            [variableName]="readingVariables[3]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
+                            [variableName]="readingVariables[3]" [title]="timeSeriesTitles[3]" [startDate]="strStartDate" [endDate]="strEndDate"></app-line-chart>
                         </div>
                     </div>
                 </mat-card-content>

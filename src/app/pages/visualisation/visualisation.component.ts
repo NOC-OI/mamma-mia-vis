@@ -15,7 +15,6 @@ import {MatSelectModule} from '@angular/material/select';
 import {CampaignService} from '../../services/campaign.service';
 import {MetricsPage, MetricsUnits, TrajectoryData} from '../../services/campaign.interface';
 import { AnimationStateService } from '../../services/animation-state.service';
-import { BarChartComponent } from '../../graphs/bar-chart/bar-chart.component';
 import { Observable, Subscription, timer, of } from 'rxjs';
 import { delay, expand, skip } from 'rxjs/operators';
 import { LineChartComponent } from "../../graphs/line-chart/line-chart.component";
@@ -27,7 +26,7 @@ import {provideNativeDateAdapter} from '@angular/material/core';
   selector: 'app-visualisation',
   standalone: true,
   imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, 
-            MatCardModule, MatCheckboxModule, MatSelectModule, BarChartComponent, LineChartComponent, 
+            MatCardModule, MatCheckboxModule, MatSelectModule, LineChartComponent, 
             MetricChartComponent, MatFormFieldModule, MatDatepickerModule, FormsModule, ReactiveFormsModule],
   providers: [provideNativeDateAdapter()],
   templateUrl: './visualisation.component.html',
@@ -72,6 +71,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   numberOfRecords = 1000;
   currentNumberOfRecords = 0;
   readingVariables: Array<string> = ["pressure", "salinity", "temperature", "chlorophyll"];
+  timeSeriesTitles: Array<string> = ["Sea Water Pressure, equals 0 at sea-level", "Sea Water Practical Salinity", "Sea Water Temperature", "Mass Concentration of Chlorophyll in Sea Water"]
   showDeploymentsList = false;
   isLoading = false;
   recordsPerPage = this.PAGE_SIZE;

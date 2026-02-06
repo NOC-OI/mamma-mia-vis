@@ -1,8 +1,10 @@
-<h5>
-    Sensor Readings Series
+<h6>
+    {{ title }}
+</h6>
+<div>
     <app-chart-legend 
         [colorScale]="colorScale" 
         [options]="{ title: 'Depth (m)', width: 400 }">
     </app-chart-legend>
     <div #chartContainer></div>
-</h5>
+</div>
