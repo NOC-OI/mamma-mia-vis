@@ -20,14 +20,15 @@ import { delay, expand, skip } from 'rxjs/operators';
 import { LineChartComponent } from "../../graphs/line-chart/line-chart.component";
 import { MetricChartComponent } from '../../metric-chart/metric-chart.component';
 import {MatDatepickerInputEvent, MatDatepickerModule} from '@angular/material/datepicker';
+import { MatTabsModule } from '@angular/material/tabs';
 import {provideNativeDateAdapter} from '@angular/material/core';
 
 @Component({
   selector: 'app-visualisation',
   standalone: true,
   imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, 
-            MatCardModule, MatCheckboxModule, MatSelectModule, LineChartComponent, 
-            MetricChartComponent, MatFormFieldModule, MatDatepickerModule, FormsModule, ReactiveFormsModule],
+            MatCardModule, MatCheckboxModule, MatSelectModule, LineChartComponent, MetricChartComponent, 
+            MatFormFieldModule, MatDatepickerModule, FormsModule, ReactiveFormsModule, MatTabsModule],
   providers: [provideNativeDateAdapter()],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
