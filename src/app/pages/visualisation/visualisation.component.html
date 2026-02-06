@@ -1,53 +1,70 @@
 <app-header></app-header>
 <div class="container-fluid container-stack">
     <div class="row">
-        <div class="col"></div>
+        <div class="col">
+            <mat-card class="mt-3">
+                <mat-card-content>
+                    <div class="row row-cols-4 mt-1">
+                        <div class="col">
+                            <mat-form-field>
+                                <mat-label class="missions-dropdown-box"><b>Missions</b></mat-label>
+                                <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="setParamsForTimeSeriesGraph()">
+                                    <mat-option value="bioCarbon">BIO Carbon</mat-option>
+                                    <mat-option value="rapidArray">RAPID Array virtual mooring</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
+                        @if(showDeploymentsList){
+                        <div class="col">
+                            <mat-form-field>
+                                <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
+                                <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="setParamsForTimeSeriesGraph()">
+                                    <mat-option value="deployment645">Deployment 645</mat-option>
+                                    <mat-option value="deployment646">Deployment 646</mat-option>
+                                    <mat-option value="deployment648">Deployment 648</mat-option>
+                                    <mat-option value="deployment649">Deployment 649</mat-option>
+                                    <mat-option value="deployment650">Deployment 650</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
+                        }
+                        <div class="col">
+                            Number of Records: 
+                            <input type="text" [(ngModel)]="numberOfRecords" (change)="setParamsForTimeSeriesGraph()"/>
+                        </div>
+                        <div class="col">
+                            <mat-form-field>
+                                <mat-label>Enter a date range</mat-label>
+                                <mat-date-range-input [rangePicker]="picker">
+                                    <input (dateInput)="inputStartDate($event)" matStartDate placeholder="Start date">
+                                    <input (dateInput)="inputEndDate($event)" matEndDate placeholder="End date">
+                                </mat-date-range-input>
+                                <mat-hint>MM/DD/YYYY – MM/DD/YYYY</mat-hint>
+                                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                                <mat-date-range-picker #picker></mat-date-range-picker>
+                            </mat-form-field>
+                        </div>
+                    </div>
+                </mat-card-content>
+            </mat-card>
+        </div>
         <div class="col-12 py-4">
-            <mat-tab-group>
+            <mat-tab-group (selectedTabChange)="onTabChange($event)">
+                <mat-tab label="AUV's Trajectory">
+                    <mat-card class="mt-3">
+                        <mat-card-content>
+                            <div class="row row-cols-1 my-2">
+                                <div class="col-px4">
+                                    <div  id="cesiumContainer" class="simulation-panel">
+                                    </div>
+                                </div>
+                            </div>
+                        </mat-card-content>
+                    </mat-card>
+                </mat-tab>
                 <mat-tab label="Time-series Graphs">
                     <mat-card class="mt-3">
                         <mat-card-content>
-                            <div class="row row-cols-4 mt-1">
-                                <div class="col">
-                                    <mat-form-field>
-                                        <mat-label class="missions-dropdown-box"><b>Missions</b></mat-label>
-                                        <mat-select matNativeControl required [(ngModel)]="selectedMission" (ngModelChange)="setParamsForTimeSeriesGraph()">
-                                            <mat-option value="bioCarbon">BIO Carbon</mat-option>
-                                            <mat-option value="rapidArray">RAPID Array virtual mooring</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                @if(showDeploymentsList){
-                                <div class="col">
-                                    <mat-form-field>
-                                        <mat-label class="deployments-dropdown-box"><b>Deployments</b></mat-label>
-                                        <mat-select matNativeControl required [(ngModel)]="selectedDeployment" (ngModelChange)="setParamsForTimeSeriesGraph()">
-                                            <mat-option value="deployment645">Deployment 645</mat-option>
-                                            <mat-option value="deployment646">Deployment 646</mat-option>
-                                            <mat-option value="deployment648">Deployment 648</mat-option>
-                                            <mat-option value="deployment649">Deployment 649</mat-option>
-                                            <mat-option value="deployment650">Deployment 650</mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                </div>
-                                }
-                                <div class="col">
-                                    Number of Records: 
-                                    <input type="text" [(ngModel)]="numberOfRecords" (change)="setParamsForTimeSeriesGraph()"/>
-                                </div>
-                                <div class="col">
-                                    <mat-form-field>
-                                        <mat-label>Enter a date range</mat-label>
-                                        <mat-date-range-input [rangePicker]="picker">
-                                            <input (dateInput)="inputStartDate($event)" matStartDate placeholder="Start date">
-                                            <input (dateInput)="inputEndDate($event)" matEndDate placeholder="End date">
-                                        </mat-date-range-input>
-                                        <mat-hint>MM/DD/YYYY – MM/DD/YYYY</mat-hint>
-                                        <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-                                        <mat-date-range-picker #picker></mat-date-range-picker>
-                                    </mat-form-field>
-                                </div>
-                            </div>
                             <div class="row row-cols-2 my-2 metrics-panel">
                                 <div class="col px-4">
                                     <!-- <app-metric-chart [selectedMission]="selectedMission"></app-metric-chart> -->
@@ -71,10 +88,6 @@
                             </div>
                         </mat-card-content>
                     </mat-card>
-                </mat-tab>
-                <mat-tab label="AUV's Trajectory">
-                    <!-- <div  id="cesiumContainer" class="simulation-panel">
-                    </div> -->
                 </mat-tab>
             </mat-tab-group>
 

@@ -14,13 +14,13 @@ import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MatSelectModule} from '@angular/material/select';
 import {CampaignService} from '../../services/campaign.service';
 import {MetricsPage, MetricsUnits, TrajectoryData} from '../../services/campaign.interface';
-import { AnimationStateService } from '../../services/animation-state.service';
-import { Observable, Subscription, timer, of } from 'rxjs';
-import { delay, expand, skip } from 'rxjs/operators';
-import { LineChartComponent } from "../../graphs/line-chart/line-chart.component";
-import { MetricChartComponent } from '../../metric-chart/metric-chart.component';
+import {AnimationStateService} from '../../services/animation-state.service';
+import {Observable, Subscription, of} from 'rxjs';
+import {delay, expand, skip} from 'rxjs/operators';
+import {LineChartComponent} from "../../graphs/line-chart/line-chart.component";
+import {MetricChartComponent} from '../../metric-chart/metric-chart.component';
 import {MatDatepickerInputEvent, MatDatepickerModule} from '@angular/material/datepicker';
-import { MatTabsModule } from '@angular/material/tabs';
+import {MatTabChangeEvent, MatTabsModule } from '@angular/material/tabs';
 import {provideNativeDateAdapter} from '@angular/material/core';
 
 @Component({
@@ -92,11 +92,18 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   async ngAfterViewInit(): Promise<void> {
+    this.setGlobalScene();
   }
 
   ngOnDestroy(): void {
     // Clean up Cesium resources
     this.cleanUpResources();
+  }
+
+  onTabChange(event: MatTabChangeEvent){
+    if(event.index === 0 && !this.viewer){
+      this.setGlobalScene();
+    }
   }
 
   cleanUpResources(){
@@ -126,9 +133,9 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     });
 
     this.setModelRoute();
-    this.processMetricsData();
-    this.addEventsToModel("cesium/static/models/autosub-long-range-v3.glb");
-    this.addModelToView();
+    // this.processMetricsData();
+    // this.addEventsToModel("cesium/static/models/autosub-long-range-v3.glb");
+    // this.addModelToView();
 
     this.viewer.baseLayerPicker.viewModel.selectedImagery =
       this.viewer.baseLayerPicker.viewModel.imageryProviderViewModels[11];
