@@ -17,7 +17,7 @@ export class CampaignService {
     this.rootAPIUrl = this.configService.config.rootAPIUrl.staging;
   }
 
-  getVehicleTrajectory(selectedMission: string, selectedDeployment: string): Observable<TrajectoryData> {
+  getVehicleTrajectory(selectedMission: string, selectedDeployment: string, startDate: string, endDate: string, pageNumber: number, pageSize: number): Observable<TrajectoryData> {
     let trajectoryDeploymentUrl = selectedMission == "bioCarbon" ? 
                               "" : this.configService.config.relativeTrajectoryUrl.rapidArray;
         
@@ -41,7 +41,7 @@ export class CampaignService {
         }
     }
 
-  trajectoryDeploymentUrl = this.rootAPIUrl + trajectoryDeploymentUrl;
+  trajectoryDeploymentUrl = `${this.rootAPIUrl}${trajectoryDeploymentUrl}&start_date=${startDate}&end_date=${endDate}&page_number=${pageNumber}&page_size=${pageSize}`;
   return this.http.get<TrajectoryData>(trajectoryDeploymentUrl)
   .pipe(
       retry(3), // Retry up to 3 times if the request fails

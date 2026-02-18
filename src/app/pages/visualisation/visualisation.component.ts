@@ -1,10 +1,10 @@
-import {AfterViewInit, Component, OnDestroy, OnInit} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {HeaderComponent} from "../../core/layout/header/header.component";
 import {Cartesian3, Ion, Viewer, DirectionalLight, Globe, 
   defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
   JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
   Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition,
-  Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset, CesiumTerrainProvider} from 'cesium';
+  Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset, CesiumTerrainProvider, CzmlDataSource} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
@@ -34,7 +34,7 @@ import {provideNativeDateAdapter} from '@angular/material/core';
   styleUrls: ['./visualisation.component.scss']
 })
 export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy {
-
+  @ViewChild('cesiumContainer') container!: ElementRef;
   viewer: Viewer | undefined;
   showContourLines = true;
   showElevationColorRamp = true;
@@ -85,14 +85,16 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private preUpdateListener: (() => void) | undefined;
 
-  constructor(private campaignService: CampaignService, private animationStateService: AnimationStateService) { }
+  constructor(private campaignService: CampaignService, private animationStateService: AnimationStateService, private ngZone: NgZone) { }
 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
   }
 
-  async ngAfterViewInit(): Promise<void> {
-    this.setGlobalScene();
+  ngAfterViewInit(){
+    this.ngZone.runOutsideAngular(async () => {
+      await this.setGlobalScene();
+    });
   }
 
   ngOnDestroy(): void {
@@ -122,83 +124,83 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   async setGlobalScene(){
-    this.viewer = new Viewer('cesiumContainer', {
+    if (this.viewer) {
+      this.viewer.destroy(); // Clean up if it already exists
+    }
+    const terrainProvider = await CesiumTerrainProvider.fromIonAssetId(2426648);
+
+    this.viewer = new Viewer(this.container.nativeElement, {
       shadows: true,
       shouldAnimate: true,
       geocoder: IonGeocodeProviderType.GOOGLE,
-      // terrainProvider: await createWorldBathymetryAsync({
-      //   requestVertexNormals: true,
-      // }),
-      terrainProvider: await CesiumTerrainProvider.fromIonAssetId(2426648),
+      terrainProvider: terrainProvider,
     });
 
-    this.setModelRoute();
+    // this.setModelRoute();
     // this.processMetricsData();
     // this.addEventsToModel("cesium/static/models/autosub-long-range-v3.glb");
     // this.addModelToView();
+    
+    if(this.viewer){
+      this.viewer.baseLayerPicker.viewModel.selectedImagery =
+        this.viewer.baseLayerPicker.viewModel.imageryProviderViewModels[11];
 
-    this.viewer.baseLayerPicker.viewModel.selectedImagery =
-      this.viewer.baseLayerPicker.viewModel.imageryProviderViewModels[11];
+      this.scene = this.viewer.scene;
+      this.globe = this.scene.globe;
 
-    this.scene = this.viewer.scene;
-    this.globe = this.scene.globe;
+      // Prevent the user from tilting beyond the ellipsoid surface
+      this.scene.screenSpaceCameraController.maximumTiltAngle = Math.PI / 2.0;
 
-    // Prevent the user from tilting beyond the ellipsoid surface
-    this.scene.screenSpaceCameraController.maximumTiltAngle = Math.PI / 2.0;
+      this.globe.enableLighting = false;
+      this.globe.maximumScreenSpaceError = 1.0;
 
-    this.globe.enableLighting = false;
-    this.globe.maximumScreenSpaceError = 1.0;
+      this.scene.light = new DirectionalLight({
+        direction: new Cartesian3(1, 0, 0), // Updated every frame
+      });
 
-    this.scene.light = new DirectionalLight({
-      direction: new Cartesian3(1, 0, 0), // Updated every frame
-    });
+      const camera = this.scene.camera;
+      const cameraMaxHeight = this.globe.ellipsoid.maximumRadius * 2;
+      const scratchNormal = new Cartesian3();
 
-    const camera = this.scene.camera;
-    const cameraMaxHeight = this.globe.ellipsoid.maximumRadius * 2;
-    const scratchNormal = new Cartesian3();
+      this.scene.preRender.addEventListener(() => {
+        const surfaceNormal = this.globe ? this.globe.ellipsoid.geodeticSurfaceNormal(
+          camera.positionWC,
+          scratchNormal,
+        ) : new Cartesian3();
+        const negativeNormal = Cartesian3.negate(surfaceNormal, surfaceNormal);
 
-    this.scene.preRender.addEventListener(() => {
-      const surfaceNormal = this.globe ? this.globe.ellipsoid.geodeticSurfaceNormal(
-        camera.positionWC,
-        scratchNormal,
-      ) : new Cartesian3();
-      const negativeNormal = Cartesian3.negate(surfaceNormal, surfaceNormal);
+        const zoomMagnitude = Cartesian3.magnitude(camera.positionWC) / cameraMaxHeight;
+        this.updateGlobeMaterialUniforms(zoomMagnitude);
+      });
 
-      const zoomMagnitude = Cartesian3.magnitude(camera.positionWC) / cameraMaxHeight;
-      this.updateGlobeMaterialUniforms(zoomMagnitude);
-    });
+      // this.updateGlobeMaterial();
 
-    this.updateGlobeMaterial();
+      this.scene.camera.setView({
+        destination: new Cartesian3(
+          -2710292.813384663,
+          -4360657.061518585,
+          3793571.786860543,
+        ),
+        orientation: new HeadingPitchRoll(
+          5.794062761901799,
+          -0.30293409742984756,
+          0.0009187098191985044,
+        ),
+      });
 
-    this.scene.camera.setView({
-      destination: new Cartesian3(
-        -2710292.813384663,
-        -4360657.061518585,
-        3793571.786860543,
-      ),
-      orientation: new HeadingPitchRoll(
-        5.794062761901799,
-        -0.30293409742984756,
-        0.0009187098191985044,
-      ),
-    });
+      // Enable rendering the sky
+      this.scene.skyAtmosphere.show = true;
+      // this.addPhotorealistic3Dtiles(this.scene);
 
-    // Enable rendering the sky
-    this.scene.skyAtmosphere.show = true;
-
-    this.addPhotorealistic3Dtiles(this.scene);
+    }
   }
 
   async addPhotorealistic3Dtiles(scene: Scene){
     try {
-        const tileset = await createGooglePhotorealistic3DTileset({
-        // Only the Google Geocoder can be used with Google Photorealistic 3D Tiles.  Set the `geocode` property of the viewer constructor options to IonGeocodeProviderType.GOOGLE.
-        onlyUsingWithGoogleGeocoder: true,
-      });
-      scene.primitives.add(tileset);
+        const tileset = await createGooglePhotorealistic3DTileset();
+      scene.primitives.add(tileset);      
     } catch (error) {
-      console.log(`Error loading Photorealistic 3D Tiles tileset.
-        ${error}`);
+      console.log(`Error loading Photorealistic 3D Tiles tileset. ${error}`);
     }
   }
 
@@ -519,6 +521,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.strStartDate = this.convertToISO(this.startDate);
     this.strEndDate = this.convertToISO(this.endDate);
     this.setParamsForTimeSeriesGraph();
+    this.getAUVTrajectory();
   }
 
   convertToISO(inputDate: Date | null): string {
@@ -752,5 +755,34 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       // modelLabel.viewFrom = new Cartesian3(-30.0, -10.0, 10.0);
     }
   }
-  
+
+  getAUVTrajectory(){
+    if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
+      if(this.numberOfRecords > 0){
+            this.campaignService.getVehicleTrajectory(this.selectedMission, this.selectedDeployment, this.strStartDate, this.strEndDate, this.PAGE_NUMBER, this.numberOfRecords).subscribe({
+              next: (data) => {
+                this.trajectoryData = data;
+                this.addAUVTrajectoryToView();
+                this.errorMessage = null;
+          
+              },
+              error: (error) => {
+                this.errorMessage = error.message;
+                console.error('Error fetching metrics data:', error);
+              }
+            });
+      }
+    }
+  }
+  addAUVTrajectoryToView(){
+    if(this.viewer){
+      this.viewer.dataSources.add(CzmlDataSource.load(this.trajectoryData?.trajectory));
+        this.viewer.scene.camera.setView({
+          destination: Cartesian3.fromDegrees(-116.52, 35.02, 95000),
+          orientation: {
+            heading: 6,
+          },
+      });
+    }
+  }
 }
