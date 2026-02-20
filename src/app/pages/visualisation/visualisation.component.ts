@@ -1,10 +1,12 @@
 import {AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import { DatePipe } from '@angular/common';
 import {HeaderComponent} from "../../core/layout/header/header.component";
 import {Cartesian3, Ion, Viewer, DirectionalLight, Globe, 
   defined, Scene, Material, Color, HeadingPitchRoll, Math as cesiumMath, Transforms, 
   JulianDate, ClockRange, SampledPositionProperty, SampledProperty, VelocityVectorProperty, 
   Model, ModelAnimationLoop, Matrix3, Matrix4, VelocityOrientationProperty, DistanceDisplayCondition,
-  Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset, CesiumTerrainProvider, CzmlDataSource} from 'cesium';
+  Ellipsoid, IonGeocodeProviderType, createGooglePhotorealistic3DTileset, CesiumTerrainProvider, CzmlDataSource,
+  createWorldBathymetryAsync} from 'cesium';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatInputModule} from '@angular/material/input';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
@@ -28,7 +30,7 @@ import {provideNativeDateAdapter} from '@angular/material/core';
   standalone: true,
   imports: [HeaderComponent, MatSliderModule, MatInputModule, FormsModule, MatFormFieldModule, 
             MatCardModule, MatCheckboxModule, MatSelectModule, LineChartComponent, MetricChartComponent, 
-            MatFormFieldModule, MatDatepickerModule, FormsModule, ReactiveFormsModule, MatTabsModule],
+            MatFormFieldModule, MatDatepickerModule, FormsModule, ReactiveFormsModule, MatTabsModule, DatePipe],
   providers: [provideNativeDateAdapter()],
   templateUrl: './visualisation.component.html',
   styleUrls: ['./visualisation.component.scss']
@@ -85,7 +87,9 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private preUpdateListener: (() => void) | undefined;
 
-  constructor(private campaignService: CampaignService, private animationStateService: AnimationStateService, private ngZone: NgZone) { }
+  constructor(private campaignService: CampaignService, private animationStateService: AnimationStateService, private ngZone: NgZone) { 
+
+  }
 
   ngOnInit(): void {
     Ion.defaultAccessToken = process.env['ION_ACCESS_TOKEN'] ? process.env['ION_ACCESS_TOKEN'] : '';
@@ -127,7 +131,11 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.viewer) {
       this.viewer.destroy(); // Clean up if it already exists
     }
-    const terrainProvider = await CesiumTerrainProvider.fromIonAssetId(2426648);
+    
+    // const terrainProvider = await CesiumTerrainProvider.fromIonAssetId(2426648);
+    const terrainProvider = await createWorldBathymetryAsync({
+    requestVertexNormals: true,
+    })
 
     this.viewer = new Viewer(this.container.nativeElement, {
       shadows: true,
@@ -190,7 +198,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
       // Enable rendering the sky
       this.scene.skyAtmosphere.show = true;
-      // this.addPhotorealistic3Dtiles(this.scene);
+      this.addPhotorealistic3Dtiles(this.scene);
 
     }
   }
@@ -774,11 +782,12 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       }
     }
   }
+
   addAUVTrajectoryToView(){
-    if(this.viewer){
-      this.viewer.dataSources.add(CzmlDataSource.load(this.trajectoryData?.trajectory));
+    if(this.viewer && this.trajectoryData){
+      this.viewer.dataSources.add(CzmlDataSource.load(this.trajectoryData.trajectory));
         this.viewer.scene.camera.setView({
-          destination: Cartesian3.fromDegrees(-116.52, 35.02, 95000),
+          destination: Cartesian3.fromDegrees(this.trajectoryData.startCoordinates[0], this.trajectoryData.startCoordinates[1], 1195000),
           orientation: {
             heading: 6,
           },

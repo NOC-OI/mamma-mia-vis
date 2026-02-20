@@ -4,13 +4,13 @@
     },
     "relativeTrajectoryUrl": {
         "bioCarbon": {
-            "deployment645": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&group=Deployment_645/trajectory",
-            "deployment646": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&group=Deployment_646/trajectory",
-            "deployment648": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&group=Deployment_648/trajectory",
-            "deployment649": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&group=Deployment_649/trajectory",
-            "deployment650": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&group=Deployment_650/trajectory"
+            "deployment645": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&payload_group=Deployment_645/payload&platform_group=Deployment_645/platform",
+            "deployment646": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&payload_group=Deployment_646/payload&platform_group=Deployment_646/platform",
+            "deployment648": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&payload_group=Deployment_648/payload&platform_group=Deployment_648/platform",
+            "deployment649": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&payload_group=Deployment_649/payload&platform_group=Deployment_649/platform",
+            "deployment650": "zarr_trajectory?url=./assets/data_inputs/BIO-Carbon.zarr&payload_group=Deployment_650/payload&platform_group=Deployment_650/platform"
         },
-        "rapidArray": "zarr_trajectory?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&group=RAD24_01/trajectory"
+        "rapidArray": "zarr_trajectory?url=./assets/data_inputs/RAPID_array_virtual_mooring.zarr&payload_group=RAD24_01/payload&platform_group=RAD24_01/platform"
     },
     "relativeMetricsUrl": {
         "bioCarbon": {
@@ -36,5 +36,4 @@
         "bioCarbon": "zarr_mission_deployments?url=./assets/data_inputs/BIO-Carbon.zarr",
         "rapidArray": ""
     }
-
 }

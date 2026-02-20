@@ -39,7 +39,7 @@ interface AppConfig {
   relativeMissionDeployments: {
     bioCarbon: string;
     rapidArray: string;
-  }
+  };
 }
 
 @Injectable({

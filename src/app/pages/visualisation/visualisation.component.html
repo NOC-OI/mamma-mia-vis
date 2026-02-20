@@ -39,7 +39,9 @@
                                     <input (dateInput)="inputStartDate($event)" matStartDate placeholder="Start date">
                                     <input (dateInput)="inputEndDate($event)" matEndDate placeholder="End date">
                                 </mat-date-range-input>
-                                <mat-hint>MM/DD/YYYY – MM/DD/YYYY</mat-hint>
+                                @if(this.trajectoryData && this.trajectoryData.deploymentStartDate){
+                                    <mat-hint>{{this.trajectoryData.deploymentStartDate | date: 'M/d/YYYY, H:mm'}} – {{this.trajectoryData.deploymentEndDate | date: 'M/d/YYYY, H:mm'}}</mat-hint>
+                                }
                                 <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
                                 <mat-date-range-picker #picker></mat-date-range-picker>
                             </mat-form-field>

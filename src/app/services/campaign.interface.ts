@@ -1,24 +1,30 @@
-enum HorizontalOrigin {
+export enum HorizontalOrigin {
   CENTER = "CENTER",
   LEFT = "LEFT",
   RIGHT = "RIGHT"
 }
 
-enum VerticalOrigin {
-  UP = "UP",
+export enum VerticalOrigin {
+  TOP = "TOP",
   BOTTOM = "BOTTOM",
   CENTER = "CENTER"
 }
 
-enum StyleFill {
+export enum StyleFill {
   FILL = "FILL"
+}
+
+export enum TypeAUV {
+  ALR = "ALR",
+  GLIDER = "Glider"
 }
 
 export interface TrajectoryData {
   trajectory: [ Document, Vehicle ],
+  startCoordinates: number[],
+  deploymentStartDate: string,
+  deploymentEndDate: string,
   totalRecords: number,
-  pageNumber: number,
-  pageSize: number
 }
 
 export interface Document {
@@ -68,7 +74,7 @@ export interface Position {
   interpolationAlgorithm: string,
   interpolationDegree: number,
   epoch: string,
-  cartesian: number[]
+  cartographicDegrees: number[]
 }
 
 
