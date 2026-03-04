@@ -198,7 +198,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
       // Enable rendering the sky
       this.scene.skyAtmosphere.show = true;
-      this.addPhotorealistic3Dtiles(this.scene);
+      // this.addPhotorealistic3Dtiles(this.scene);
 
     }
   }
@@ -330,6 +330,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.currentMission = this.selectedMission;
     this.currentDeployment = this.selectedDeployment;
     this.currentNumberOfRecords = this.numberOfRecords;
+    this.displayAUVTrajectory();
   }
 
   updateGlobeMaterialUniforms(zoomMagnitude: number): void {
@@ -526,18 +527,25 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   inputEndDate(event: MatDatepickerInputEvent<Date>) {
     this.endDate = event.value;
-    this.strStartDate = this.convertToISO(this.startDate);
-    this.strEndDate = this.convertToISO(this.endDate);
-    this.setParamsForTimeSeriesGraph();
-    this.getAUVTrajectory();
+    this.displayAUVTrajectory();
   }
 
-  convertToISO(inputDate: Date | null): string {
+  displayAUVTrajectory(){
+    if(this.startDate && this.endDate){
+      this.strStartDate = this.convertToISO(true, this.startDate);
+      this.strEndDate = this.convertToISO(false, this.endDate);
+      this.getAUVTrajectory();
+    }
+  }
+
+  convertToISO(isStartDate: boolean, inputDate: Date | null): string {
     let isoDate = null;
+    let time = "";
     if(inputDate){
       const padStart = (value: number): string =>
           value.toString().padStart(2, '0');
-      isoDate = `${padStart(inputDate.getFullYear())}-${padStart(inputDate.getMonth() + 1)}-${inputDate.getDate()} ${padStart(inputDate.getHours())}:${padStart(inputDate.getMinutes())}:${padStart(inputDate.getSeconds())}`;
+      time = isStartDate ? "00:00:00" : "23:59:59"; 
+      isoDate = `${padStart(inputDate.getFullYear())}-${padStart(inputDate.getMonth() + 1)}-${inputDate.getDate()} ${time}`;
     }
     return isoDate ? isoDate : "";
   }
@@ -567,8 +575,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
             currentPage++; 
         }
 
-        this.strStartDate = this.convertToISO(this.startDate);
-        this.strEndDate = this.convertToISO(this.endDate);
+        this.strStartDate = this.convertToISO(true, this.startDate);
+        this.strEndDate = this.convertToISO(false, this.endDate);
         
         return this.campaignService.getMetricsData(
           this.selectedMission,
@@ -784,7 +792,8 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   addAUVTrajectoryToView(){
-    if(this.viewer && this.trajectoryData){
+    if(this.viewer && this.trajectoryData && this.trajectoryData.trajectory.length > 0){
+      this.viewer.dataSources.removeAll();
       this.viewer.dataSources.add(CzmlDataSource.load(this.trajectoryData.trajectory));
         this.viewer.scene.camera.setView({
           destination: Cartesian3.fromDegrees(this.trajectoryData.startCoordinates[0], this.trajectoryData.startCoordinates[1], 1195000),

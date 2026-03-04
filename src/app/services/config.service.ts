@@ -57,7 +57,6 @@ export class ConfigService {
         this.http.get<AppConfig>('assets/config.json')
       );
       this.appConfig = config;
-      console.log('App configuration loaded:', this.appConfig);
     } catch (error) {
       console.error('Failed to load app configuration:', error);
       // Handle error, e.g., throw an error or set default values
