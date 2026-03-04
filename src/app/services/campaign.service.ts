@@ -17,7 +17,7 @@ export class CampaignService {
     this.rootAPIUrl = this.configService.config.rootAPIUrl.staging;
   }
 
-  getVehicleTrajectory(selectedMission: string, selectedDeployment: string, startDate: string, endDate: string, pageNumber: number, pageSize: number): Observable<TrajectoryData> {
+  getVehicleTrajectory(selectedMission: string, selectedDeployment: string, startDate: string, endDate: string): Observable<TrajectoryData> {
     let trajectoryDeploymentUrl = selectedMission == "bioCarbon" ? 
                               "" : this.configService.config.relativeTrajectoryUrl.rapidArray;
         
@@ -41,7 +41,7 @@ export class CampaignService {
         }
     }
 
-  trajectoryDeploymentUrl = `${this.rootAPIUrl}${trajectoryDeploymentUrl}&start_date=${startDate}&end_date=${endDate}&page_number=${pageNumber}&page_size=${pageSize}`;
+  trajectoryDeploymentUrl = `${this.rootAPIUrl}${trajectoryDeploymentUrl}&start_date=${startDate}&end_date=${endDate}`;
   return this.http.get<TrajectoryData>(trajectoryDeploymentUrl)
   .pipe(
       retry(3), // Retry up to 3 times if the request fails
@@ -49,7 +49,7 @@ export class CampaignService {
     );
   }
 
-  getMetricsData(selectedMission: string, selectedDeployment: string, startDate: string, endDate: string, pageNumber: number, pageSize: number): Observable<MetricsPage> {
+  getMetricsData(selectedMission: string, selectedDeployment: string, startDate: string, endDate: string): Observable<MetricsPage> {
     let metricsDeploymentUrl = selectedMission == "bioCarbon" ? 
                               "" : this.configService.config.relativeMetricsUrl.rapidArray;
     if(selectedDeployment && selectedMission == "bioCarbon"){
@@ -72,7 +72,7 @@ export class CampaignService {
         }
     }
     
-    metricsDeploymentUrl = `${this.rootAPIUrl}${metricsDeploymentUrl}&start_date=${startDate}&end_date=${endDate}&page_number=${pageNumber}&page_size=${pageSize}`;
+    metricsDeploymentUrl = `${this.rootAPIUrl}${metricsDeploymentUrl}&start_date=${startDate}&end_date=${endDate}`;
     return this.http.get<MetricsPage>(metricsDeploymentUrl)
     .pipe(
         retry(3),

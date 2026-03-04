@@ -124,8 +124,6 @@ export interface StepData {
 
 export interface MetricsPage {
   totalRecords: number;
-  currentPage: number;
-  recordsPerPage: number;
   metrics: SensorsReadings[];
 }
 

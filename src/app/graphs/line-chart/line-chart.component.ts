@@ -2,7 +2,6 @@ import { Component, Input, OnInit, ViewChild, ElementRef, OnChanges, SimpleChang
 import * as d3 from 'd3';
 import { MetricsUnits, MetricsPage, SensorsReadings, SeriesPoint } from '../../services/campaign.interface';
 import { CampaignService } from '../../services/campaign.service';
-import { Library } from '@observablehq/stdlib';
 import { ChartLegendComponent } from '../chart-legend/chart-legend.component';
 
 @Component({
@@ -17,7 +16,6 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
 
   @Input() selectedMission = "";
   @Input() selectedDeployment = "";
-  @Input() numberOfRecords = 50;
   @Input() variableName = "";
   @Input() startDate = "";
   @Input() endDate = "";
@@ -34,7 +32,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
 
   errorMessage: string | null = null;
   PAGE_NUMBER = 1;
-  metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.numberOfRecords };
+  metricsData: MetricsPage = { metrics: [], totalRecords: 0 };
   voronoi = false;
   colorScale: d3.ScaleSequential<string, never> | undefined;
   
@@ -43,11 +41,10 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['numberOfRecords'] || changes['variableName'] 
+    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['variableName'] 
       || changes['title'] || changes['startDate'] || changes['endDate'] || changes['invertYAxis']){
         this.selectedMission = !this.selectedMission ? changes['selectedMission']?.currentValue : this.selectedMission;
-        this.selectedDeployment = !this.selectedDeployment ?  changes['selectedDeployment']?.currentValue : this.selectedDeployment;
-        this.numberOfRecords = !this.numberOfRecords ?  changes['numberOfRecords']?.currentValue : this.numberOfRecords;
+        this.selectedDeployment = !this.selectedDeployment ?  changes['selectedDeployment']?.currentValue : this.selectedDeployment;      
         this.variableName = !this.variableName ? changes['variableName']?.currentValue : this.variableName;
         this.title = !this.title ? changes['title']?.currentValue : this.title;
         this.startDate = !this.startDate ? changes['startDate']?.currentValue : this.startDate;
@@ -83,24 +80,22 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
 
   getMetricsData() {
     if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
-          if(this.numberOfRecords > 0){
-            this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.startDate, this.endDate, this.PAGE_NUMBER, this.numberOfRecords).subscribe({
-              next: (data) => {
-                this.metricsData = data;
-                this.metricsData.metrics.forEach(metricsReading => {
-                  if (typeof metricsReading.datetime === 'number') {
-                      metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
-                  }
-                });
-                this.errorMessage = null;
-                this.createChart(this.variableName);
-              },
-              error: (error) => {
-                this.errorMessage = error.message;
-                console.error('Error fetching metrics data:', error);
+        this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.startDate, this.endDate).subscribe({
+          next: (data) => {
+            this.metricsData = data;
+            this.metricsData.metrics.forEach(metricsReading => {
+              if (typeof metricsReading.datetime === 'number') {
+                  metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
               }
             });
-          }          
+            this.errorMessage = null;
+            this.createChart(this.variableName);
+          },
+          error: (error) => {
+            this.errorMessage = error.message;
+            console.error('Error fetching metrics data:', error);
+          }
+        });
     }
   }
   

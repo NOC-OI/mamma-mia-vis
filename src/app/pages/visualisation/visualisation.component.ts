@@ -64,15 +64,13 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   trajectoryData: TrajectoryData | null = null;
   PAGE_NUMBER = 1;
   PAGE_SIZE = 1000;
-  metricsData: MetricsPage = { metrics: [], totalRecords: 0, currentPage: 1, recordsPerPage: this.PAGE_SIZE };
+  metricsData: MetricsPage = { metrics: [], totalRecords: 0 };
   metricsUnits: MetricsUnits | null = null;
   errorMessage: string | null = null;
   selectedMission = "";
   currentMission = "";
   selectedDeployment = ""
   currentDeployment = "";
-  numberOfRecords = 1000;
-  currentNumberOfRecords = 0;
   readingVariables: Array<string> = ["pressure", "salinity", "temperature", "chlorophyll"];
   timeSeriesTitles: Array<string> = ["Sea Water Pressure, equals 0 at sea-level", "Sea Water Practical Salinity", "Sea Water Temperature", "Mass Concentration of Chlorophyll in Sea Water"]
   showDeploymentsList = false;
@@ -329,7 +327,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     this.showDeploymentsList = this.selectedMission == "bioCarbon";
     this.currentMission = this.selectedMission;
     this.currentDeployment = this.selectedDeployment;
-    this.currentNumberOfRecords = this.numberOfRecords;
     this.displayAUVTrajectory();
   }
 
@@ -557,7 +554,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     //TODO: Check if this logic is useful to play an animation of data by a period of time
     
     this.isLoading = true;
-    this.metricsData = { metrics: [], totalRecords: Infinity, currentPage: 1, recordsPerPage: this.PAGE_SIZE };
+    this.metricsData = { metrics: [], totalRecords: Infinity};
 
     let currentPage = 0; 
     let totalRecords = Infinity;
@@ -582,9 +579,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
           this.selectedMission,
           this.selectedDeployment,
           this.strStartDate,
-          this.strEndDate,
-          currentPage,
-          this.recordsPerPage
+          this.strEndDate
         ).pipe(
           delay(50) 
         );
@@ -642,7 +637,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       // this.processMetricsData();
       this.addSensorReadingsToTimeSeries();
       
-      console.log(`Fetched page ${page.currentPage}. Total records: ${this.metricsData.metrics.length}`);
+      console.log(`Fetched page ${page.totalRecords}. Total records: ${this.metricsData.metrics.length}`);
     }
 
   }
@@ -774,21 +769,19 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
 
   getAUVTrajectory(){
     if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
-      if(this.numberOfRecords > 0){
-            this.selectedDeployment = this.selectedMission == "rapidArray" ? "" : this.selectedDeployment;
-            this.campaignService.getVehicleTrajectory(this.selectedMission, this.selectedDeployment, this.strStartDate, this.strEndDate, this.PAGE_NUMBER, this.numberOfRecords).subscribe({
-              next: (data) => {
-                this.trajectoryData = data;
-                this.addAUVTrajectoryToView();
-                this.errorMessage = null;
-          
-              },
-              error: (error) => {
-                this.errorMessage = error.message;
-                console.error('Error fetching metrics data:', error);
-              }
-            });
-      }
+        this.selectedDeployment = this.selectedMission == "rapidArray" ? "" : this.selectedDeployment;
+        this.campaignService.getVehicleTrajectory(this.selectedMission, this.selectedDeployment, this.strStartDate, this.strEndDate).subscribe({
+          next: (data) => {
+            this.trajectoryData = data;
+            this.addAUVTrajectoryToView();
+            this.errorMessage = null;
+      
+          },
+          error: (error) => {
+            this.errorMessage = error.message;
+            console.error('Error fetching metrics data:', error);
+          }
+        });
     }
   }
 
