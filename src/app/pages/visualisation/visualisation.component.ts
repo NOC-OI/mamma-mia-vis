@@ -775,6 +775,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
   getAUVTrajectory(){
     if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
       if(this.numberOfRecords > 0){
+            this.selectedDeployment = this.selectedMission == "rapidArray" ? "" : this.selectedDeployment;
             this.campaignService.getVehicleTrajectory(this.selectedMission, this.selectedDeployment, this.strStartDate, this.strEndDate, this.PAGE_NUMBER, this.numberOfRecords).subscribe({
               next: (data) => {
                 this.trajectoryData = data;
