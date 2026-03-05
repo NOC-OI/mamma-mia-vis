@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, ViewChild, ElementRef, OnChanges, SimpleChanges, AfterViewInit } from '@angular/core';
 import * as d3 from 'd3';
-import { MetricsUnits, MetricsPage, SensorsReadings, SeriesPoint } from '../../services/campaign.interface';
+import { MetricsUnits, MetricsPage, SensorsReadings, SeriesPoint, Margin } from '../../services/campaign.interface';
 import { CampaignService } from '../../services/campaign.service';
 import { ChartLegendComponent } from '../chart-legend/chart-legend.component';
 
@@ -30,11 +30,19 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     chlorophyll: '',
   };
 
+  containerSize = {width: 928, height: 550};
   errorMessage: string | null = null;
   PAGE_NUMBER = 1;
   metricsData: MetricsPage = { metrics: [], totalRecords: 0 };
   voronoi = false;
   colorScale: d3.ScaleSequential<string, never> | undefined;
+  chartLegendTitle? = "";
+  alertMessage = "";
+  gradientColours = [
+    {metric: "salinity", gradient: d3.interpolateViridis},
+    {metric: "temperature", gradient: d3.interpolateTurbo},
+    {metric: "chlorophyll", gradient: d3.interpolateGreens}
+  ];
   
   constructor(private campaignService: CampaignService){
 
@@ -50,8 +58,10 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
         this.startDate = !this.startDate ? changes['startDate']?.currentValue : this.startDate;
         this.endDate = !this.endDate ? changes['endDate']?.currentValue : this.endDate;
         this.invertYaxis = !this.invertYaxis ? changes['inverYAxis']?.currentValue : this.invertYaxis;
-        this.getMetricsUnits();
-        this.getMetricsData();
+        if(this.selectedMission && this.startDate && this.endDate){
+          this.getMetricsUnits();
+          this.getMetricsData();
+        }
     }
     if (changes['metrics'] && this.metricsData.metrics.length > 0) {
       this.createChart(this.variableName);
@@ -100,11 +110,14 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   }
   
   private createChart(metricName: string): void {
-    if (!this.chartContainer || !metricName || !this.metricsData) return;
+    this.alertMessage = "";
 
-    const width = 928;
-    const height = 550;
-    const margin = { top: 20, right: 20, bottom: 30, left: 30 };
+    if (!this.chartContainer || !metricName || !this.metricsData) {
+        this.alertMessage = "An error was found when displaying time-series."
+        return;
+    }
+
+    const margin: Margin = { top: 20, right: 20, bottom: 30, left: 30 };
 
     // 1. Transform Data
     const formattedData: SeriesPoint[] = [];
@@ -117,56 +130,50 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       }
     });
 
-    if (formattedData.length === 0) return;
+    if (formattedData.length === 0) {
+      this.alertMessage = "Data was not found, please select a different range of dates."
+      return;
+    }
 
-    // 2. Color Scale Update
-    // We get all possible keys from your units object to ensure 
-    // each variable consistently gets its own color across instances.
-    const allMetrics = Object.keys(this.metricsUnits);
-    
-    // const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-    //   .domain(allMetrics);
-    
-    // const selectedColor = colorScale(metricName);
-
-    // 3. Scales
+    // 2. Scales
     const xExtent = d3.extent(formattedData, d => d.date);
     const x = d3.scaleTime()
       .domain(xExtent as [Date, Date])
-      .range([margin.left, width - margin.right]);
+      .range([margin.left, this.containerSize.width - margin.right]);
 
-    const yExtent = d3.extent(formattedData, d => d.value);
-    const yRange = this.invertYaxis ? [margin.top, height - margin.bottom] : [height - margin.bottom, margin.top]
-    const y = d3.scaleLinear()
-      .domain([yExtent[0] ?? 0, yExtent[1] ?? 0]).nice()
-      .range(yRange);
-
-    const yExtentDepth = d3.extent(formattedData, d=> d.depth);
+    const yExtentDepth = d3.extent(formattedData, d => d.depth);
+    const yRange = this.invertYaxis ? [margin.top, this.containerSize.height - margin.bottom] : [this.containerSize.height - margin.bottom, margin.top]
     const yDepth = d3.scaleLinear()
       .domain([yExtentDepth[0] ?? 0, yExtentDepth[1] ?? 0]).nice()
-      .range([height - margin.bottom, margin.top]);
+      .range(yRange);
 
-    const lineColour = d3.scaleSequential(yDepth.domain(), d3.interpolateTurbo);    
+    const yExtentMetric = d3.extent(formattedData, d=> d.value);
+    const yMetric = d3.scaleLinear()
+      .domain([yExtentMetric[0] ?? 0, yExtentMetric[1] ?? 0]).nice()
+      .range([this.containerSize.height - margin.bottom, margin.top]);
+
+    const gradientColour = this.gradientColours.find((item) => item.metric == this.variableName);
+    const lineColour = d3.scaleSequential(yMetric.domain(), gradientColour ? gradientColour.gradient : d3.interpolateTurbo);    
 
     const chartHost = this.chartContainer.nativeElement;
     
     d3.select(chartHost).selectAll("svg").remove();
     
-    this.colorScale = d3.scaleSequential(d3.interpolateTurbo).domain(yDepth.domain());
-    
+    this.colorScale = d3.scaleSequential(gradientColour ? gradientColour.gradient : d3.interpolateTurbo).domain(yMetric.domain());    
 
-    //Selecting canvas of time series
+    // 3. Selecting canvas of time series
     const svg = d3.select(chartHost).append("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", [0, 0, width, height])
+      .attr("width", this.containerSize.width)
+      .attr("height", this.containerSize.height)
+      .attr("viewBox", [0, 0, this.containerSize.width, this.containerSize.height])
       .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;");
 
     // 4. Axes
     const unit = this.metricsUnits[metricName as keyof MetricsUnits];
+    this.chartLegendTitle = `${metricName} ${unit}`;
     
     svg.append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .attr("transform", `translate(0,${this.containerSize.height - margin.bottom})`)
       // .call(d3.axisBottom(x).ticks(d3.timeHour).tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
       .call(d3.axisBottom(x).ticks(d3.timeDay))
       .selectAll("text")
@@ -176,37 +183,37 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     const metricLabelPosition = this.invertYaxis ? ".tick:first-of-type text" : ".tick:last-of-type text";
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).tickFormat(d3.format(".2f")))
+      .call(d3.axisLeft(yDepth).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
       .call(g => g.select(metricLabelPosition).clone()
         .attr("x", 3)
         .attr("text-anchor", "start")
         .attr("font-weight", "bold")
-        .text(`${metricName} (${unit})`)
+        .text('Depth (m)')
       );
 
     // 5. Line generation
     const line = d3.line<SeriesPoint>()
       .x(d => x(d.date)!)
-      .y(d => y(d.value)!);
+      .y(d => yDepth(d.depth)!);
 
-    // Append the color gradient
+    // 6. Append the color gradient
     const gradientId = `gradient-${metricName}`;
 
     svg.append("linearGradient")
         .attr("id", gradientId)
         .attr("gradientUnits", "userSpaceOnUse")
         .attr("x1", margin.left)
-        .attr("x2", width - margin.right)
+        .attr("x2", this.containerSize.width - margin.right)
         .attr("y1", 0)
         .attr("y2", 0)
       .selectAll("stop")
         .data(formattedData)
         .join("stop")
-        .attr("offset", d => `${((x(d.date) - margin.left) / (width - margin.left - margin.right)) * 100}%`)
-        .attr("stop-color", d => lineColour(d.depth));
+        .attr("offset", d => `${((x(d.date) - margin.left) / (this.containerSize.width - margin.left - margin.right)) * 100}%`)
+        .attr("stop-color", d => lineColour(d.value));
     
-    // 6. Draw Line with unique color
+    // 7. Draw Line with colour gradientß
     svg.append("path")
       .datum(formattedData)
       .attr("fill", "none")
@@ -215,7 +222,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .attr("stroke-linejoin", "round")
       .attr("d", line);
     
-    // 7. Create the grid.
+    // 8. Create the grid.
     svg.append("g")
         .attr("stroke", "currentColor")
         .attr("stroke-opacity", 0.1)
@@ -226,22 +233,21 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
             .attr("x1", d => 0.5 + x(d))
             .attr("x2", d => 0.5 + x(d))
             .attr("y1", margin.top)
-            .attr("y2", height - margin.bottom))
+            .attr("y2", this.containerSize.height - margin.bottom))
         .call(g => g.append("g")
           .selectAll("line")
-          .data(y.ticks())
+          .data(yDepth.ticks())
           .join("line")
-            .attr("y1", d => 0.5 + y(d))
-            .attr("y2", d => 0.5 + y(d))
+            .attr("y1", d => 0.5 + yDepth(d))
+            .attr("y2", d => 0.5 + yDepth(d))
             .attr("x1", margin.left)
-            .attr("x2", width - margin.right));
+            .attr("x2", this.containerSize.width - margin.right));
 
 
-    // 8. Interactivity
+    // 9. Interactivity
     const dot = svg.append("g").attr("display", "none");
     dot.append("circle")
       .attr("r", 4)
-      // .attr("fill", selectedColor) // Dot color matches the line
       .attr("fill", `url(#${gradientId})`) // Dot color matches the line
       .attr("stroke", "white")
       .attr("stroke-width", 1);
@@ -260,7 +266,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
 
       if (d) {
         dot.select("circle").attr("fill", lineColour(d.depth));
-        dot.attr("transform", `translate(${x(d.date)},${y(d.value)})`);
+        dot.attr("transform", `translate(${x(d.date)},${yDepth(d.depth)})`);
         dotLabel.text(`${d.value.toFixed(2)} ${unit}`);
         dot.attr("display", null);
       }

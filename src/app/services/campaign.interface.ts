@@ -152,3 +152,10 @@ export interface SeriesPoint {
   value: number;
   metric: string;
 }
+
+export interface Margin {
+  top: number; 
+  right: number; 
+  bottom: number; 
+  left: number;
+}

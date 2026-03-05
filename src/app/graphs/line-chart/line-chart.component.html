@@ -2,9 +2,14 @@
     {{ title }}
 </h6>
 <div>
+    @if(alertMessage){
+    <div class="alert alert-warning" role="alert">
+        {{alertMessage}}
+    </div>
+    }
     <app-chart-legend 
         [colorScale]="colorScale" 
-        [options]="{ title: 'Depth (m)', width: 400 }">
+        [options]="{ title: chartLegendTitle, width: 400 }">
     </app-chart-legend>
     <div #chartContainer></div>
 </div>
