@@ -189,22 +189,24 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .attr("transform", "rotate(-35)")
       .style("text-anchor", "end");
 
-    const metricLabelPosition = this.invertYaxis ? ".tick:first-of-type text" : ".tick:last-of-type text";
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(yDepth).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
-      .call(g => g.select(metricLabelPosition).clone()
-        .attr("x", 3)
-        .attr("text-anchor", "start")
-        .attr("font-weight", "bold")
-        .text('Depth (m)')
+      .call(g => g.append("text")
+          .attr("x", -margin.left)
+          .attr("y", 10)
+          .attr("fill", "black")     
+          .attr("text-anchor", "start")
+          .attr("font-weight", "bold")
+          .style("font-size", "12px")
+          .text('Depth (m)')
       );
 
     svg.append("rect")
-        .attr("transform", `translate(${margin.left},0)`)
+        .attr("transform", `translate(${margin.left}, ${margin.top})`)
         .attr("width", this.containerSize.width - margin.left - margin.right)
-        .attr("height", this.containerSize.height - margin.bottom)
+        .attr("height", this.containerSize.height - margin.bottom - margin.top)
         .attr("fill", "#2e003e");
     return { svg, unit };
   }
