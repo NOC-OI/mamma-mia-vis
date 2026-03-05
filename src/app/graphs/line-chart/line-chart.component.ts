@@ -124,13 +124,13 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       return;
     }
 
-    const { yMetric, x, yDepth } = this.getScales(formattedData, margin);
+    const { xMetric: xMetric, xDate, yDepth } = this.getScales(formattedData, margin);
     const gradientColour = this.gradientColours.find((item) => item.metric == this.variableName);
-    const lineColour = d3.scaleSequential(yMetric.domain(), gradientColour ? gradientColour.gradient : d3.interpolateTurbo);    
-    const { svg, unit } = this.createTimeSeriesCanvas(gradientColour, yMetric, metricName, margin, x, yDepth);
-    const gradientId = this.createGradientColourLine(x, yDepth, metricName, svg, margin, formattedData, lineColour);
-    this.createGrid(svg, x, margin, yDepth);
-    this.displayDotLabelOverLine(svg, gradientId, formattedData, x, lineColour, yDepth, unit);
+    const lineColour = d3.scaleSequential(xMetric.domain(), gradientColour ? gradientColour.gradient : d3.interpolateTurbo);    
+    const { svg, unit } = this.createTimeSeriesCanvas(gradientColour, xMetric, metricName, margin, xDate, yDepth);
+    const gradientId = this.createGradientColourLine(xDate, yDepth, metricName, svg, margin, formattedData, lineColour);
+    this.createGrid(svg, xDate, margin, yDepth);
+    this.displayDotLabelOverLine(svg, gradientId, formattedData, xDate, lineColour, yDepth, unit);
   }
 
   private getSensorReadingsData(metricName: string) {
@@ -147,9 +147,14 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   }
 
   private getScales(formattedData: SeriesPoint[], margin: Margin) {
-    const xExtent = d3.extent(formattedData, d => d.date);
-    const x = d3.scaleTime()
-      .domain(xExtent as [Date, Date])
+    const xDateExtent = d3.extent(formattedData, d => d.date);
+    const xDate = d3.scaleTime()
+      .domain(xDateExtent as [Date, Date])
+      .range([margin.left, this.containerSize.width - margin.right]);
+    
+    const xExtentMetric = d3.extent(formattedData, d => d.value);
+    const xMetric = d3.scaleLinear()
+      .domain([xExtentMetric[0] ?? 0, xExtentMetric[1] ?? 0]).nice()
       .range([margin.left, this.containerSize.width - margin.right]);
 
     const yExtentDepth = d3.extent(formattedData, d => d.depth);
@@ -158,19 +163,15 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .domain([yExtentDepth[0] ?? 0, yExtentDepth[1] ?? 0]).nice()
       .range(yRange);
 
-    const yExtentMetric = d3.extent(formattedData, d => d.value);
-    const yMetric = d3.scaleLinear()
-      .domain([yExtentMetric[0] ?? 0, yExtentMetric[1] ?? 0]).nice()
-      .range([this.containerSize.height - margin.bottom, margin.top]);
-    return { yMetric, x, yDepth };
+    return { xMetric: xMetric, xDate, yDepth };
   }
 
-  private createTimeSeriesCanvas(gradientColour: { metric: string; gradient: (t: number) => string; } | undefined, yMetric: d3.ScaleLinear<number, number, never>, metricName: string, margin: Margin, x: d3.ScaleTime<number, number, never>, yDepth: d3.ScaleLinear<number, number, never>) {
+  private createTimeSeriesCanvas(gradientColour: { metric: string; gradient: (t: number) => string; } | undefined, xMetric: d3.ScaleLinear<number, number, never>, metricName: string, margin: Margin, x: d3.ScaleTime<number, number, never>, yDepth: d3.ScaleLinear<number, number, never>) {
     const chartHost = this.chartContainer.nativeElement;
 
     d3.select(chartHost).selectAll("svg").remove();
 
-    this.colorScale = d3.scaleSequential(gradientColour ? gradientColour.gradient : d3.interpolateTurbo).domain(yMetric.domain());
+    this.colorScale = d3.scaleSequential(gradientColour ? gradientColour.gradient : d3.interpolateTurbo).domain(xMetric.domain());
 
     const svg = d3.select(chartHost).append("svg")
       .attr("width", this.containerSize.width)
@@ -207,17 +208,18 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
         .attr("transform", `translate(${margin.left}, ${margin.top})`)
         .attr("width", this.containerSize.width - margin.left - margin.right)
         .attr("height", this.containerSize.height - margin.bottom - margin.top)
-        .attr("fill", "#2e003e");
+        .attr("fill", "#4c3155ff");
     return { svg, unit };
   }
 
-  private createGradientColourLine(x: d3.ScaleTime<number, number, never>, yDepth: d3.ScaleLinear<number, number, never>, metricName: string, svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, margin: Margin, formattedData: SeriesPoint[], lineColour: d3.ScaleSequential<string, never>) {
+  private createGradientColourLine(xAxis: d3.ScaleTime<number, number, never>, yAxis: d3.ScaleLinear<number, number, never>, metricName: string, svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, margin: Margin, formattedData: SeriesPoint[], lineColour: d3.ScaleSequential<string, never>) {
     const line = d3.line<SeriesPoint>()
-      .x(d => x(d.date)!)
-      .y(d => yDepth(d.depth)!);
+      .x(d => xAxis(d.date)!)
+      .y(d => yAxis(d.depth)!);
 
     const gradientId = `gradient-${metricName}`;
 
+    const totalWidth = this.containerSize.width - margin.left - margin.right;
     svg.append("linearGradient")
       .attr("id", gradientId)
       .attr("gradientUnits", "userSpaceOnUse")
@@ -228,7 +230,10 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .selectAll("stop")
       .data(formattedData)
       .join("stop")
-      .attr("offset", d => `${((x(d.date) - margin.left) / (this.containerSize.width - margin.left - margin.right)) * 100}%`)
+      .attr("offset", d => {
+        const xPos = xAxis(d.date) - margin.left;
+        return `${(xPos / totalWidth) * 100}%`;
+      })
       .attr("stop-color", d => lineColour(d.value));
 
     // Draw Line with colour gradient
