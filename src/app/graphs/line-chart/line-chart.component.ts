@@ -43,7 +43,11 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     {metric: "temperature", gradient: d3.interpolateTurbo},
     {metric: "chlorophyll", gradient: d3.interpolateGreens}
   ];
-  
+  private margin: Margin = { top: 20, right: 20, bottom: 30, left: 30 };
+  private svg!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
+  private zoom: any;
+  private currentXScale: any;
+
   constructor(private campaignService: CampaignService){
 
   }
@@ -116,7 +120,6 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
         return;
     }
 
-    const margin: Margin = { top: 20, right: 20, bottom: 30, left: 30 };
     const formattedData: SeriesPoint[] = this.getSensorReadingsData(metricName);
 
     if (formattedData.length === 0) {
@@ -124,13 +127,67 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       return;
     }
 
-    const { xMetric: xMetric, xDate, yDepth } = this.getScales(formattedData, margin);
+    const { xMetric: xMetric, xDate, yDepth } = this.getScales(formattedData, this.margin);
+    this.currentXScale = xDate; // Keep track of the zoomed scale
+
     const gradientColour = this.gradientColours.find((item) => item.metric == this.variableName);
-    const lineColour = d3.scaleSequential(xMetric.domain(), gradientColour ? gradientColour.gradient : d3.interpolateTurbo);    
-    const { svg, unit } = this.createTimeSeriesCanvas(gradientColour, xMetric, metricName, margin, xDate, yDepth);
-    const gradientId = this.createGradientColourLine(xDate, yDepth, metricName, svg, margin, formattedData, lineColour);
-    this.createGrid(svg, xDate, margin, yDepth);
-    this.displayDotLabelOverLine(svg, gradientId, formattedData, xDate, lineColour, yDepth, unit);
+    const lineColour = d3.scaleSequential(xMetric.domain(), gradientColour ? gradientColour.gradient : d3.interpolateTurbo); 
+    this.setZoomEvent(xDate, yDepth, formattedData, metricName, lineColour);   
+    const unit = this.createTimeSeriesCanvas(gradientColour, xMetric, metricName, this.margin, xDate, yDepth);
+    const gradientId = this.createGradientColourLine(xDate, yDepth, metricName, this.svg, this.margin, formattedData, lineColour);
+    this.createGrid(this.svg, xDate, this.margin, yDepth);
+    this.displayDotLabelOverLine(this.svg, gradientId, formattedData, xDate, lineColour, yDepth, unit);
+    this.svg.call(this.zoom);
+  }
+
+  private setZoomEvent(xDate: d3.ScaleTime<number, number, never>, yDepth: d3.ScaleLinear<number, number, never>, formattedData: SeriesPoint[], metricName: string, lineColour: d3.ScaleSequential<string, never>) {
+    this.zoom = d3.zoom()
+      .scaleExtent([1, 10]) // Limit zoom level
+      .extent([[this.margin.left, 0], [this.containerSize.width - this.margin.right, this.containerSize.height]])
+      .translateExtent([[this.margin.left, -Infinity], [this.containerSize.width - this.margin.right, Infinity]])
+      .on("zoom", (event) => this.zoomed(event, xDate, yDepth, formattedData, metricName, lineColour));
+  }
+
+  private zoomed(event: any, xDate: any, yDepth: any, data: any[], metricName: string, lineColour: any) {
+    // 1. Create new scale based on zoom transform
+    const newX = event.transform.rescaleX(xDate);
+    this.currentXScale = newX;
+    
+    // 2. Update the X-axis
+    (this.svg.select(".x-axis") as d3.Selection<SVGGElement, unknown, null, undefined>)
+    .call(d3.axisBottom(newX).ticks(d3.timeDay))
+    .selectAll("text")
+    .attr("transform", "rotate(-35)")
+    .style("text-anchor", "end");
+
+    // 3. Update the Line path
+    const line = d3.line<SeriesPoint>()
+      .x(d => newX(d.date)!)
+      .y(d => yDepth(d.depth)!);
+
+    (this.svg.select(".main-line") as d3.Selection<SVGPathElement, SeriesPoint[], null, undefined>)
+    .attr("d", line);
+
+    // 4. Update Grid
+    this.svg.select(".grid-x")
+      .selectAll("line")
+      .data(newX.ticks())
+      .join("line")
+      .attr("x1", (d: any) => newX(d))
+      .attr("x2", (d: any) => newX(d));
+      
+    // 5. Update Gradient Position
+    this.updateGradient(newX, metricName);
+  }
+
+  private updateGradient(xAxis: any, metricName: string) {
+    const totalWidth = this.containerSize.width - this.margin.left - this.margin.right;
+    d3.select(`#gradient-${metricName}`)
+      .selectAll("stop")
+      .attr("offset", (d: any) => {
+        const xPos = xAxis(d.date) - this.margin.left;
+        return `${(xPos / totalWidth) * 100}%`;
+      });
   }
 
   private getSensorReadingsData(metricName: string) {
@@ -173,7 +230,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
 
     this.colorScale = d3.scaleSequential(gradientColour ? gradientColour.gradient : d3.interpolateTurbo).domain(xMetric.domain());
 
-    const svg = d3.select(chartHost).append("svg")
+    this.svg = d3.select(chartHost).append("svg")
       .attr("width", this.containerSize.width)
       .attr("height", this.containerSize.height)
       .attr("viewBox", [0, 0, this.containerSize.width, this.containerSize.height])
@@ -182,7 +239,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     const unit = this.metricsUnits[metricName as keyof MetricsUnits];
     this.chartLegendTitle = `${metricName} ${unit}`;
 
-    svg.append("g")
+    this.svg.append("g")
+      .attr("class", "x-axis")
       .attr("transform", `translate(0,${this.containerSize.height - margin.bottom})`)
       // .call(d3.axisBottom(x).ticks(d3.timeHour).tickFormat(d3.timeFormat("%d/%m/%y %H:%M") as any))
       .call(d3.axisBottom(x).ticks(d3.timeDay))
@@ -190,7 +248,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .attr("transform", "rotate(-35)")
       .style("text-anchor", "end");
 
-    svg.append("g")
+    this.svg.append("g")
       .attr("transform", `translate(${margin.left}, 0)`)
       .call(d3.axisLeft(yDepth).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
@@ -201,15 +259,23 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
           .attr("text-anchor", "start")
           .attr("font-weight", "bold")
           .style("font-size", "12px")
-          .text('Depth (m)')
+          .text("Depth (m)")
       );
 
-    svg.append("rect")
+    this.svg.append("rect")
         .attr("transform", `translate(${margin.left}, 0)`)
         .attr("width", this.containerSize.width - margin.left - margin.right)
         .attr("height", this.containerSize.height - margin.bottom)
         .attr("fill", "#4c3155ff");
-    return { svg, unit };
+    
+    this.svg.append("defs").append("clipPath")
+      .attr("id", "clip")
+      .append("rect")
+      .attr("x", margin.left)
+      .attr("y", 0)
+      .attr("width", this.containerSize.width - margin.left - margin.right)
+      .attr("height", this.containerSize.height - margin.bottom);
+    return unit ;
   }
 
   private createGradientColourLine(xAxis: d3.ScaleTime<number, number, never>, yAxis: d3.ScaleLinear<number, number, never>, metricName: string, svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, margin: Margin, formattedData: SeriesPoint[], lineColour: d3.ScaleSequential<string, never>) {
@@ -239,6 +305,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     // Draw Line with colour gradient
     svg.append("path")
       .datum(formattedData)
+      .attr("clip-path", "url(#clip)")
+      .attr("class", "main-line")
       .attr("fill", "none")
       .attr("stroke", `url(#${gradientId})`)
       .attr("stroke-width", 2)
@@ -286,12 +354,12 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     const pointermoved = (event: any) => {
       const [xm] = d3.pointer(event);
       const bisect = d3.bisector((d: SeriesPoint) => d.date).center;
-      const i = bisect(formattedData, x.invert(xm));
+      const i = bisect(formattedData, this.currentXScale.invert(xm));
       const d = formattedData[i];
 
       if (d) {
         dot.select("circle").attr("fill", lineColour(d.value));
-        dot.attr("transform", `translate(${x(d.date)},${yDepth(d.depth)})`);
+        dot.attr("transform", `translate(${this.currentXScale(d.date)},${yDepth(d.depth)})`);
         dotLabel.text(`${d.value.toFixed(2)} ${unit}`);
         dot.attr("display", null);
       }
