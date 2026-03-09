@@ -30,7 +30,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     chlorophyll: '',
   };
 
-  containerSize = {width: 928, height: 550};
+  containerSize = {width: 928, height: 600};
   errorMessage: string | null = null;
   PAGE_NUMBER = 1;
   metricsData: MetricsPage = { metrics: [], totalRecords: 0 };
@@ -177,7 +177,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .attr("width", this.containerSize.width)
       .attr("height", this.containerSize.height)
       .attr("viewBox", [0, 0, this.containerSize.width, this.containerSize.height])
-      .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;");
+      .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif; padding-top: 2rem;");
 
     const unit = this.metricsUnits[metricName as keyof MetricsUnits];
     this.chartLegendTitle = `${metricName} ${unit}`;
@@ -191,12 +191,12 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .style("text-anchor", "end");
 
     svg.append("g")
-      .attr("transform", `translate(${margin.left},0)`)
+      .attr("transform", `translate(${margin.left}, 0)`)
       .call(d3.axisLeft(yDepth).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
       .call(g => g.append("text")
           .attr("x", -margin.left)
-          .attr("y", 10)
+          .attr("y", -margin.top)
           .attr("fill", "black")     
           .attr("text-anchor", "start")
           .attr("font-weight", "bold")
@@ -205,9 +205,9 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       );
 
     svg.append("rect")
-        .attr("transform", `translate(${margin.left}, ${margin.top})`)
+        .attr("transform", `translate(${margin.left}, 0)`)
         .attr("width", this.containerSize.width - margin.left - margin.right)
-        .attr("height", this.containerSize.height - margin.bottom - margin.top)
+        .attr("height", this.containerSize.height - margin.bottom)
         .attr("fill", "#4c3155ff");
     return { svg, unit };
   }
