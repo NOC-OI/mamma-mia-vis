@@ -1,4 +1,4 @@
-# MammaMiaVisualisation
+# Mamma-Mia Visualisation
 
 Virtual reality visualisation for testing marine autonomy strategies and its application to present and future monitoring systems.
 
@@ -23,6 +23,22 @@ Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.
 ## Running end-to-end tests
 
 Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+
+## Docker
+
+To build and run the application using Docker:
+
+1.  **Build the Docker image**:
+    ```bash
+    docker build -t mamma-mia-vis-frontend .
+    ```
+
+2.  **Run the Docker container**:
+    ```bash
+    docker run -d -p 8080:80 --name mamma-mia-vis-front-end-cnt mamma-mia-vis-frontend
+    ```
+
+The application will be accessible at `http://localhost:8080`.
 
 ## Further help
 
