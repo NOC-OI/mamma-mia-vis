@@ -1,0 +1,15 @@
+node_modules
+dist
+public
+.git
+.vscode
+.editorconfig
+README.md
+LICENSE
+*.code-workspace
+.angular
+.npm
+npm-debug.log
+docker-compose.yml
+Dockerfile
+.dockerignore
