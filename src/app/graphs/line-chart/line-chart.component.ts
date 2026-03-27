@@ -21,9 +21,9 @@ export class LineChartComponent implements OnChanges, AfterViewInit {
   @Input() endDate = "";
   @Input() title = "";
   @Input() invertYaxis = false;
-  @Input() minOffset = 0;
-  @Input() maxOffset = 0;
-
+  @Input()min: number | undefined;
+  @Input() max: number | undefined;
+  
   metricsUnits: MetricsUnits = {
     temperature: '°C',
     pressure: 'bar',
@@ -45,8 +45,6 @@ export class LineChartComponent implements OnChanges, AfterViewInit {
     { metric: "temperature", gradient: d3.interpolateTurbo },
     { metric: "chlorophyll", gradient: d3.interpolateGreens }
   ];
-  min: number | undefined;
-  max: number | undefined;
   private margin: Margin = { top: 20, right: 20, bottom: 30, left: 30 };
   private svg!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private zoom: any;
@@ -121,8 +119,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit {
   private calculateVariableBound(data: SeriesPoint[]): void {
     const values = data.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v));
     if (values.length > 0) {
-      let min = Math.min(...values) + this.minOffset;
-      let max = Math.max(...values) + this.maxOffset;
+      let min = Math.min(...values);
+      let max = Math.max(...values);
       this.min = this.min !== undefined ? this.min : min;
       this.max = this.max !== undefined ? this.max : max;
     }
