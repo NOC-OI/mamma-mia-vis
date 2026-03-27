@@ -11,7 +11,7 @@ import { ChartLegendComponent } from '../chart-legend/chart-legend.component';
   templateUrl: './line-chart.component.html',
   styleUrl: './line-chart.component.scss'
 })
-export class LineChartComponent implements OnChanges, AfterViewInit{
+export class LineChartComponent implements OnChanges, AfterViewInit {
   @ViewChild('chartContainer', { static: true }) chartContainer!: ElementRef;
 
   @Input() selectedMission = "";
@@ -21,6 +21,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   @Input() endDate = "";
   @Input() title = "";
   @Input() invertYaxis = false;
+  @Input() minOffset = 0;
+  @Input() maxOffset = 0;
 
   metricsUnits: MetricsUnits = {
     temperature: '°C',
@@ -30,7 +32,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     chlorophyll: '',
   };
 
-  containerSize = {width: 928, height: 600};
+  containerSize = { width: 928, height: 600 };
   errorMessage: string | null = null;
   PAGE_NUMBER = 1;
   metricsData: MetricsPage = { metrics: [], totalRecords: 0 };
@@ -39,33 +41,34 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   chartLegendTitle? = "";
   alertMessage = "";
   gradientColours = [
-    {metric: "salinity", gradient: d3.interpolateViridis},
-    {metric: "temperature", gradient: d3.interpolateTurbo},
-    {metric: "chlorophyll", gradient: d3.interpolateGreens}
+    { metric: "salinity", gradient: d3.interpolateViridis },
+    { metric: "temperature", gradient: d3.interpolateTurbo },
+    { metric: "chlorophyll", gradient: d3.interpolateGreens }
   ];
+  min: number | undefined;
+  max: number | undefined;
   private margin: Margin = { top: 20, right: 20, bottom: 30, left: 30 };
   private svg!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private zoom: any;
   private currentXScale: any;
 
-  constructor(private campaignService: CampaignService){
+  constructor(private campaignService: CampaignService) {
 
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if(changes['selectedMission'] || changes['selectedDeployment'] || changes['variableName'] 
-      || changes['title'] || changes['startDate'] || changes['endDate'] || changes['invertYAxis']){
-        this.selectedMission = !this.selectedMission ? changes['selectedMission']?.currentValue : this.selectedMission;
-        this.selectedDeployment = !this.selectedDeployment ?  changes['selectedDeployment']?.currentValue : this.selectedDeployment;      
-        this.variableName = !this.variableName ? changes['variableName']?.currentValue : this.variableName;
-        this.title = !this.title ? changes['title']?.currentValue : this.title;
-        this.startDate = !this.startDate ? changes['startDate']?.currentValue : this.startDate;
-        this.endDate = !this.endDate ? changes['endDate']?.currentValue : this.endDate;
-        this.invertYaxis = !this.invertYaxis ? changes['inverYAxis']?.currentValue : this.invertYaxis;
-        if(this.selectedMission && this.startDate && this.endDate){
-          this.getMetricsUnits();
-          this.getMetricsData();
-        }
+
+    if (changes['selectedMission']) this.selectedMission = changes['selectedMission'].currentValue;
+    if (changes['selectedDeployment']) this.selectedDeployment = changes['selectedDeployment'].currentValue;
+    if (changes['variableName']) this.variableName = changes['variableName'].currentValue;
+    if (changes['title']) this.title = changes['title'].currentValue;
+    if (changes['startDate']) this.startDate = changes['startDate'].currentValue;
+    if (changes['endDate']) this.endDate = changes['endDate'].currentValue;
+    if (changes['invertYaxis']) this.invertYaxis = changes['invertYaxis'].currentValue;
+
+    if (this.selectedMission && this.startDate && this.endDate) {
+      this.getMetricsUnits();
+      this.getMetricsData();
     }
     if (changes['metrics'] && this.metricsData.metrics.length > 0) {
       this.createChart(this.variableName);
@@ -78,7 +81,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   }
 
   getMetricsUnits() {
-    if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
+    if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)) {
       this.campaignService.getMetricsUnits(this.selectedMission, this.selectedDeployment).subscribe({
         next: (data) => {
           this.metricsUnits = data;
@@ -93,31 +96,43 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
   }
 
   getMetricsData() {
-    if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)){
-        this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.startDate, this.endDate).subscribe({
-          next: (data) => {
-            this.metricsData = data;
-            this.metricsData.metrics.forEach(metricsReading => {
-              if (typeof metricsReading.datetime === 'number') {
-                  metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
-              }
-            });
-            this.errorMessage = null;
-            this.createChart(this.variableName);
-          },
-          error: (error) => {
-            this.errorMessage = error.message;
-            console.error('Error fetching metrics data:', error);
-          }
-        });
+    if (this.selectedMission == "rapidArray" || (this.selectedMission == "bioCarbon" && this.selectedDeployment)) {
+      this.campaignService.getMetricsData(this.selectedMission, this.selectedDeployment, this.startDate, this.endDate).subscribe({
+        next: (data) => {
+          this.metricsData = data;
+          this.metricsData.metrics.forEach(metricsReading => {
+            if (typeof metricsReading.datetime === 'number') {
+              metricsReading.datetime = new Date(metricsReading.datetime).toISOString();
+            }
+          });
+          this.errorMessage = null;
+          const formattedData = this.getSensorReadingsData(this.variableName);
+          this.calculateVariableBound(formattedData);
+          this.createChart(this.variableName);
+        },
+        error: (error) => {
+          this.errorMessage = error.message;
+          console.error('Error fetching metrics data:', error);
+        }
+      });
     }
   }
-  
+
+  private calculateVariableBound(data: SeriesPoint[]): void {
+    const values = data.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v));
+    if (values.length > 0) {
+      let min = Math.min(...values) + this.minOffset;
+      let max = Math.max(...values) + this.maxOffset;
+      this.min = this.min !== undefined ? this.min : min;
+      this.max = this.max !== undefined ? this.max : max;
+    }
+  }
+
   private createChart(metricName: string): void {
     this.alertMessage = "";
     if (!this.chartContainer || !metricName || !this.metricsData) {
-        this.alertMessage = "An error was found when displaying time-series."
-        return;
+      this.alertMessage = "An error was found when displaying time-series."
+      return;
     }
 
     const formattedData: SeriesPoint[] = this.getSensorReadingsData(metricName);
@@ -131,8 +146,8 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     this.currentXScale = xDate; // Keep track of the zoomed scale
 
     const gradientColour = this.gradientColours.find((item) => item.metric == this.variableName);
-    const lineColour = d3.scaleSequential(xMetric.domain(), gradientColour ? gradientColour.gradient : d3.interpolateTurbo); 
-    this.setZoomEvent(xDate, yDepth, formattedData, metricName, lineColour);   
+    const lineColour = d3.scaleSequential(xMetric.domain(), gradientColour ? gradientColour.gradient : d3.interpolateTurbo);
+    this.setZoomEvent(xDate, yDepth, formattedData, metricName, lineColour);
     const unit = this.createTimeSeriesCanvas(gradientColour, xMetric, metricName, this.margin, xDate, yDepth);
     const gradientId = this.createGradientColourLine(xDate, yDepth, metricName, this.svg, this.margin, formattedData, lineColour);
     this.createGrid(this.svg, xDate, this.margin, yDepth);
@@ -152,13 +167,13 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     // 1. Create new scale based on zoom transform
     const newX = event.transform.rescaleX(xDate);
     this.currentXScale = newX;
-    
+
     // 2. Update the X-axis
     (this.svg.select(".x-axis") as d3.Selection<SVGGElement, unknown, null, undefined>)
-    .call(d3.axisBottom(newX).ticks(d3.timeDay))
-    .selectAll("text")
-    .attr("transform", "rotate(-35)")
-    .style("text-anchor", "end");
+      .call(d3.axisBottom(newX).ticks(d3.timeDay))
+      .selectAll("text")
+      .attr("transform", "rotate(-35)")
+      .style("text-anchor", "end");
 
     // 3. Update the Line path
     const line = d3.line<SeriesPoint>()
@@ -166,7 +181,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .y(d => yDepth(d.depth)!);
 
     (this.svg.select(".main-line") as d3.Selection<SVGPathElement, SeriesPoint[], null, undefined>)
-    .attr("d", line);
+      .attr("d", line);
 
     // 4. Update Grid
     this.svg.select(".grid-x")
@@ -175,7 +190,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .join("line")
       .attr("x1", (d: any) => newX(d))
       .attr("x2", (d: any) => newX(d));
-      
+
     // 5. Update Gradient Position
     this.updateGradient(newX, metricName);
   }
@@ -208,10 +223,13 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
     const xDate = d3.scaleTime()
       .domain(xDateExtent as [Date, Date])
       .range([margin.left, this.containerSize.width - margin.right]);
-    
+
     const xExtentMetric = d3.extent(formattedData, d => d.value);
+    const domainMin = this.min !== undefined ? this.min : (xExtentMetric[0] ?? 0);
+    const domainMax = this.max !== undefined ? this.max : (xExtentMetric[1] ?? 0);
+
     const xMetric = d3.scaleLinear()
-      .domain([xExtentMetric[0] ?? 0, xExtentMetric[1] ?? 0]).nice()
+      .domain([domainMin, domainMax]).nice()
       .range([margin.left, this.containerSize.width - margin.right]);
 
     const yExtentDepth = d3.extent(formattedData, d => d.depth);
@@ -253,21 +271,21 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .call(d3.axisLeft(yDepth).tickFormat(d3.format(".2f")))
       .call(g => g.select(".domain").remove())
       .call(g => g.append("text")
-          .attr("x", -margin.left)
-          .attr("y", -margin.top)
-          .attr("fill", "black")     
-          .attr("text-anchor", "start")
-          .attr("font-weight", "bold")
-          .style("font-size", "12px")
-          .text("Depth (m)")
+        .attr("x", -margin.left)
+        .attr("y", -margin.top)
+        .attr("fill", "black")
+        .attr("text-anchor", "start")
+        .attr("font-weight", "bold")
+        .style("font-size", "12px")
+        .text("Depth (m)")
       );
 
     this.svg.append("rect")
-        .attr("transform", `translate(${margin.left}, 0)`)
-        .attr("width", this.containerSize.width - margin.left - margin.right)
-        .attr("height", this.containerSize.height - margin.bottom)
-        .attr("fill", "#4c3155ff");
-    
+      .attr("transform", `translate(${margin.left}, 0)`)
+      .attr("width", this.containerSize.width - margin.left - margin.right)
+      .attr("height", this.containerSize.height - margin.bottom)
+      .attr("fill", "#4c3155ff");
+
     this.svg.append("defs").append("clipPath")
       .attr("id", "clip")
       .append("rect")
@@ -275,7 +293,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .attr("y", 0)
       .attr("width", this.containerSize.width - margin.left - margin.right)
       .attr("height", this.containerSize.height - margin.bottom);
-    return unit ;
+    return unit;
   }
 
   private createGradientColourLine(xAxis: d3.ScaleTime<number, number, never>, yAxis: d3.ScaleLinear<number, number, never>, metricName: string, svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, margin: Margin, formattedData: SeriesPoint[], lineColour: d3.ScaleSequential<string, never>) {
@@ -371,7 +389,7 @@ export class LineChartComponent implements OnChanges, AfterViewInit{
       .on("pointerleave", () => dot.attr("display", "none"));
   }
 
-  roundTo2Decimals( input?: number) {
+  roundTo2Decimals(input?: number) {
     let roundedInput = input ? Math.round(input * 100) / 100 : undefined;
     return roundedInput;
   }

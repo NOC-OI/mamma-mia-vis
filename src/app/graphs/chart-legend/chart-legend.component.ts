@@ -17,6 +17,8 @@ export interface LegendOptions {
   ticks?: number;
   tickFormat?: any;
   tickValues?: any[];
+  min?: number;
+  max?: number;
 }
 
 @Component({
@@ -56,8 +58,17 @@ export class ChartLegendComponent implements OnChanges, AfterViewInit {
       marginLeft = 0,
       ticks = width / 64,
       tickFormat,
-      tickValues
+      tickValues,
+      min,
+      max
     } = this.options;
+
+    const domain = this.colorScale.domain();
+    const finalMin = min !== undefined ? min : domain[0];
+    const finalMax = max !== undefined ? max : domain[domain.length - 1];
+    
+    // Create a working scale with the overridden domain if necessary
+    const workingScale = this.colorScale.copy().domain([finalMin, finalMax]);
 
     // Clear previous legend
     const host = d3.select(this.container.nativeElement);
@@ -75,8 +86,8 @@ export class ChartLegendComponent implements OnChanges, AfterViewInit {
 
     // Continuous Scale
     if (this.colorScale.interpolate) {
-      const n = Math.min(this.colorScale.domain().length, this.colorScale.range().length);
-      x = this.colorScale.copy().rangeRound(d3.quantize(d3.interpolate(marginLeft, width - marginRight), n));
+      const n = Math.min(workingScale.domain().length, this.colorScale.range().length);
+      x = workingScale.copy().rangeRound(d3.quantize(d3.interpolate(marginLeft, width - marginRight), n));
 
       svg.append("image")
         .attr("x", marginLeft)
@@ -84,12 +95,12 @@ export class ChartLegendComponent implements OnChanges, AfterViewInit {
         .attr("width", width - marginLeft - marginRight)
         .attr("height", height - marginTop - marginBottom)
         .attr("preserveAspectRatio", "none")
-        .attr("xlink:href", this.ramp(this.colorScale.copy().domain(d3.quantize(d3.interpolate(0, 1), n))).toDataURL());
+        .attr("xlink:href", this.ramp(workingScale.copy().domain(d3.quantize(d3.interpolate(0, 1), n))).toDataURL());
     }
 
     // Sequential Scale
     else if (this.colorScale.interpolator) {
-      x = Object.assign(this.colorScale.copy()
+      x = Object.assign(workingScale.copy()
         .interpolator(d3.interpolateRound(marginLeft, width - marginRight)),
         { range() { return [marginLeft, width - marginRight]; } });
 
@@ -99,14 +110,14 @@ export class ChartLegendComponent implements OnChanges, AfterViewInit {
         .attr("width", width - marginLeft - marginRight)
         .attr("height", height - marginTop - marginBottom)
         .attr("preserveAspectRatio", "none")
-        .attr("xlink:href", this.ramp(this.colorScale.interpolator()).toDataURL());
+        .attr("xlink:href", this.ramp(workingScale.interpolator()).toDataURL());
 
       if (!x.ticks) {
         let v = tickValues;
         let f = tickFormat;
         if (v === undefined) {
           const n = Math.round(ticks + 1);
-          v = d3.range(n).map(i => d3.quantile(this.colorScale.domain(), i / (n - 1)));
+          v = d3.range(n).map(i => d3.quantile(workingScale.domain(), i / (n - 1)));
         }
         if (typeof f !== "function") {
           f = d3.format(f === undefined ? ",f" : f);

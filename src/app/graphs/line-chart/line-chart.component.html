@@ -9,7 +9,7 @@
     }
     <app-chart-legend 
         [colorScale]="colorScale" 
-        [options]="{ title: chartLegendTitle, width: 400 }">
+        [options]="{ title: chartLegendTitle, width: 400, min: min, max: max }">
     </app-chart-legend>
     <div #chartContainer></div>
 </div>
