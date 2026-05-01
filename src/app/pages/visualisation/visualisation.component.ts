@@ -168,11 +168,10 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       });
 
       this.scene.camera.setView({
-        destination: new Cartesian3(
-          -2710292.813384663,
-          -4360657.061518585,
-          3793571.786860543,
-        ),
+        destination: Cartesian3.fromDegrees(
+          -12.659740, 
+          60.610335998535156, 
+          140000),
         orientation: new HeadingPitchRoll(
           5.794062761901799,
           -0.30293409742984756,
