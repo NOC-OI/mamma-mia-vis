@@ -304,7 +304,7 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       this.viewer.dataSources.removeAll();
       this.viewer.dataSources.add(CzmlDataSource.load(this.trajectoryData.trajectory));
       this.viewer.scene.camera.setView({
-        destination: Cartesian3.fromDegrees(this.trajectoryData.startCoordinates[0], this.trajectoryData.startCoordinates[1], 1195000),
+        destination: Cartesian3.fromDegrees(this.trajectoryData.startCoordinates[0], this.trajectoryData.startCoordinates[1], 4195000),
         orientation: {
           heading: 6,
         },
