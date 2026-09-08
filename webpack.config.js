@@ -25,77 +25,77 @@ module.exports = {
         concatenateModules: false
     },
     module: {
-    rules: [
-        {
-            test: /\.js$/, 
-            use: 'babel-loader',
-            exclude: /node_modules/,
-        },
-        {
-            test: /\.ts$/, 
-            use: '@ngtools/webpack', // Use Angular Webpack loader for AOT compilation
-            exclude: /node_modules/,
-        },
-        {
-            test: /\.html$/,
-            loader: 'html-loader'
-        },
-        {
-            test: /\.css$/i,
-            use: ['style-loader', 'css-loader'],
-        },
-        {
-            test: /\.scss$/i,
-            exclude: path.resolve(__dirname, 'src/styles.scss'),
-            use: [
-                'to-string-loader',
-                // Translates CSS into CommonJS
-                "css-loader",
-                // Compiles Sass to CSS
-                {
-                    loader: "sass-loader",
-                    options: {
-                        sourceMap: true, // Necessary for resolve-url-loader
-                        implementation: require("sass"),
+        rules: [
+            {
+                test: /\.js$/,
+                use: 'babel-loader',
+                exclude: /node_modules/,
+            },
+            {
+                test: /\.ts$/,
+                use: '@ngtools/webpack', // Use Angular Webpack loader for AOT compilation
+                exclude: /node_modules/,
+            },
+            {
+                test: /\.html$/,
+                loader: 'html-loader'
+            },
+            {
+                test: /\.css$/i,
+                use: ['style-loader', 'css-loader'],
+            },
+            {
+                test: /\.scss$/i,
+                exclude: path.resolve(__dirname, 'src/styles.scss'),
+                use: [
+                    'to-string-loader',
+                    // Translates CSS into CommonJS
+                    "css-loader",
+                    // Compiles Sass to CSS
+                    {
+                        loader: "sass-loader",
+                        options: {
+                            sourceMap: true, // Necessary for resolve-url-loader
+                            implementation: require("sass"),
+                        },
                     },
-                },
-            ],
-            include: path.resolve(__dirname, 'src/app'), // Only apply to Angular component styles
-        },
-        {
-            test: /\.(scss)$/,
-            include: path.resolve(__dirname, 'src/styles.scss'),
-            use: [
-              {
-                loader: 'style-loader'
-              },
-              {
-                loader: 'css-loader'
-              },
-              {
-                loader: 'postcss-loader',
-                options: {
-                  postcssOptions: {
-                    plugins: () => [
-                      require('autoprefixer')
-                    ]
-                  }
-                }
-              },
-              {
-                loader: 'sass-loader'
-              }
-            ]
-        },
-        {
-            test: /\.(png|svg|jpg|jpeg|gif|ico)$/i,
-            type: 'asset/resource',
-        },
-        {
-            test: /\.(woff|woff2|eot|ttf|otf)$/i,
-            type: 'asset/resource',
-        },
-    ],
+                ],
+                include: path.resolve(__dirname, 'src/app'), // Only apply to Angular component styles
+            },
+            {
+                test: /\.(scss)$/,
+                include: path.resolve(__dirname, 'src/styles.scss'),
+                use: [
+                    {
+                        loader: 'style-loader'
+                    },
+                    {
+                        loader: 'css-loader'
+                    },
+                    {
+                        loader: 'postcss-loader',
+                        options: {
+                            postcssOptions: {
+                                plugins: () => [
+                                    require('autoprefixer')
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        loader: 'sass-loader'
+                    }
+                ]
+            },
+            {
+                test: /\.(png|svg|jpg|jpeg|gif|ico)$/i,
+                type: 'asset/resource',
+            },
+            {
+                test: /\.(woff|woff2|eot|ttf|otf)$/i,
+                type: 'asset/resource',
+            },
+        ],
     },
     plugins: [
         new AngularWebpackPlugin({ // Enable AOT in Webpack
@@ -111,9 +111,9 @@ module.exports = {
                 { from: path.join(cesiumSource, "ThirdParty"), to: `${cesiumBaseUrl}/ThirdParty`, },
                 { from: path.join(cesiumSource, "Assets"), to: `${cesiumBaseUrl}/Assets`, },
                 { from: path.join(cesiumSource, "Widgets"), to: `${cesiumBaseUrl}/Widgets`, },
-                { from: path.join(assetsSource, "autosub-long-range"), to: `${cesiumBaseUrl}/models`, },
                 { from: path.join(assetsSource, "config.json"), to: 'assets' }
-            ],}),
+            ],
+        }),
         new webpack.DefinePlugin({
             // Define relative base path in cesium for loading assets
             CESIUM_BASE_URL: JSON.stringify(cesiumBaseUrl),
