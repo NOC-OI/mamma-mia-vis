@@ -162,15 +162,15 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
       const cameraMaxHeight = this.globe.ellipsoid.maximumRadius * 2;
 
       this.scene.preRender.addEventListener(() => {
-        
+
         const zoomMagnitude = Cartesian3.magnitude(camera.positionWC) / cameraMaxHeight;
         this.updateGlobeMaterialUniforms(zoomMagnitude);
       });
 
       this.scene.camera.setView({
         destination: Cartesian3.fromDegrees(
-          -12.659740, 
-          60.610335998535156, 
+          -12.659740,
+          60.610335998535156,
           140000),
         orientation: new HeadingPitchRoll(
           5.794062761901799,
@@ -193,25 +193,6 @@ export class VisualisationComponent implements OnInit, AfterViewInit, OnDestroy 
     } catch (error) {
       console.log(`Error loading Photorealistic 3D Tiles tileset. ${error}`);
     }
-  }
-
-
-  getElevationContourMaterial(): Material {
-    return new Material({
-      fabric: {
-        type: "ElevationColorContour",
-        materials: {
-          contourMaterial: { type: "ElevationContour" },
-          elevationRampMaterial: { type: "ElevationRamp" }
-        },
-        components: {
-          diffuse:
-            "(1.0 - contourMaterial.alpha) * elevationRampMaterial.diffuse + contourMaterial.alpha * contourMaterial.diffuse",
-          alpha: "max(contourMaterial.alpha, elevationRampMaterial.alpha)"
-        }
-      },
-      translucent: false,
-    });
   }
 
 
