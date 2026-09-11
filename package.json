@@ -8,7 +8,9 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:MammaMiaVisualisation": "node dist/mamma-mia-visualisation/server/server.mjs",
-    "copy:workers": "cp -R node_modules/cesium/Build/Cesium/Workers src/assets/cesium/ "
+    "copy:workers": "cp -R node_modules/cesium/Build/Cesium/Workers src/assets/cesium/ ",
+    "docs:serve": "mkdocs serve",
+    "docs:build": "mkdocs build"
   },
   "private": true,
   "dependencies": {
@@ -27,8 +29,6 @@
     "@observablehq/stdlib": "^5.8.8",
     "bootstrap": "^5.3.3",
     "cesium": "^1.130.0",
-    "chart.js": "^4.4.8",
-    "chartjs-adapter-date-fns": "^3.0.0",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
     "express": "^4.18.2",

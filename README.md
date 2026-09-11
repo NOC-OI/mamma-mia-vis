@@ -1,45 +1,34 @@
-# Mamma-Mia Visualisation
+# MAMMA MIA Visualisation
 
-Virtual reality visualisation for testing marine autonomy strategies and its application to present and future monitoring systems.
+**MAMMA MIA** (Marine Autonomy Modelling: Merging observAtions and siMulations for Interoperable Applications) Visualisation is a modern web-based geospatial and oceanographic data visualization application built with **Angular 18** and **CesiumJS**. It enables researchers, mission operators, and marine scientists to simulate, and analyze autonomous underwater vehicle (AUV) missions in 3D and 4D environments with synchronized physical and chemical ocean telemetry.
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.6.
+## Important Links
+- [MAMMA MIA Visualization Documentation](https://noc-oi.github.io/mamma-mia-vis/)
+- [MAMMA MIA Toolbox Documentation ](https://noc-mdp.github.io/MammaMia/)
 
-## Development server
+##  Dependencies
 
-Run `npm run start` for a dev server. Navigate to `http://localhost:8080/`. The application will automatically reload if you change any of the source files.
+### Frontend dependencies
+```
+- Node.js>=`18.x` or `20.x` (LTS recommended)
+- npm>=`9.x` or higher (comes bundled with Node.js)
+- Cesium Ion Access Token: An active token from [Cesium Ion](https://ion.cesium.com/) for bathymetric terrain and geocoding services.
+- Angular>=`18.2.0`
+- Angular material>=`18.2.12`
+- bootstrap>=`5.3.3`
+- d3>=`7.9.0`
+- date-fns>=`4.1.0`
+- express>=`4.18.2`
+- rxjs>=`7.8.0`
+- tslib>=`2.3.0`
+- zone.js>=`0.14.10`
+```
 
-## Code scaffolding
+### Documentation dependencies 
+```
+- mkdocs: Version `1.6.0`
+- mkdocs-material: Version `9.5.0`
+- pymdown-extensions: Version `11.0.2`
+```
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
-
-## Build
-
-Run `npm run build` to build the project. The build artifacts will be stored in the `public/` directory.
-
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Docker
-
-To build and run the application using Docker:
-
-1.  **Build the Docker image**:
-    ```bash
-    docker build -t mamma-mia-vis-frontend .
-    ```
-
-2.  **Run the Docker container**:
-    ```bash
-    docker run -d -p 8080:80 --name mamma-mia-vis-front-end-cnt mamma-mia-vis-frontend
-    ```
-
-The application will be accessible at `http://localhost:8080`.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+See the [installation guide](https://noc-oi.github.io/mamma-mia-vis/getting-started/) for more information.
