@@ -2,6 +2,26 @@
 
 **MAMMA MIA** (Marine Autonomy Modelling: Merging observAtions and siMulations for Interoperable Applications) Visualisation is a modern web-based geospatial and oceanographic data visualization application built with **Angular 18** and **CesiumJS**. It enables researchers, mission operators, and marine scientists to simulate, and analyze autonomous underwater vehicle (AUV) missions in 3D and 4D environments with synchronized physical and chemical ocean telemetry.
 
+## Features
+### Deployment trajectory visualisation
+BIO Carbon deployment 646 using a Slocum Glider
+
+<img src="src/assets/deployment_646.png" alt="Deployment 646 with Slocum Glider" width="700"/>
+
+BIO Carbon deployment 650 using an Autosub Long Range
+
+<img src="src/assets/deployment_650.png" alt="Deployment 650 with Autosub Long Range" width="700"/>
+
+### Time series of oceanographic data
+
+Time series of salinity and temperature from the BIO Carbon deployment 650
+
+<img src="src/assets/salinity_temperature_time_series.png" alt="Salinity and temperature time series" width="700"/>
+
+Time series of chlorophyll from the BIO Carbon deployment 650
+
+<img src="src/assets/chlorophyll_time_serie.png" alt="Chlorophyll time series" width="700"/>
+
 ## Important Links
 - [MAMMA MIA Visualization Documentation](https://noc-oi.github.io/mamma-mia-vis/)
 - [MAMMA MIA Toolbox Documentation ](https://noc-mdp.github.io/MammaMia/)
